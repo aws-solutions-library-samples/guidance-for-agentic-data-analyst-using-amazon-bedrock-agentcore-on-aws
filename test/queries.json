@@ -1,0 +1,548 @@
+[
+    {
+        "query": "how many people live in cambridge",
+        "datasets": [
+            "mid-year-pop-est"
+        ],
+        "answer": "149,963"
+    },
+    {
+        "query": "How many 16-24 year-olds are unemployed?",
+        "datasets": [
+            "labour-market"
+        ],
+        "answer": "571,345"
+    },
+    {
+        "query": "What percentage of those aged 65 or over are in work?",
+        "datasets": [
+            "labour-market"
+        ],
+        "answer": "12.85"
+    },
+    {
+        "query": "What is the latest monthly GDP estimate?",
+        "datasets": [
+            "gdp-to-four-decimal-places"
+        ],
+        "answer": "102.5002"
+    },
+    {
+        "query": "What is the latest monthly GDP estimate for the education sector?",
+        "datasets": [
+            "gdp-to-four-decimal-places"
+        ],
+        "answer": "101.3957"
+    },
+    {
+        "query": "What is inflation for December?",
+        "datasets": [
+            "cpih01"
+        ],
+        "answer": "the CPIH (Consumer Prices Index including owner occupiers' housing costs) inflation rate for December 2024 was 3.52% year-on-year. The CPIH index stood at 135.1 (with 2015=100)"
+    },
+    {
+        "query": "What is the current CPI index for car sales?",
+        "datasets": [
+            "cpih01"
+        ],
+        "answer": "The current CPI index values for car sales as of September 2025 are:\n- **New motor cars**: 139.5\n- **Second-hand motor cars**: 112.6"
+    },
+    {
+        "query": "How many 30 year-olds live in Blaenau Gwent?",
+        "datasets": [
+            "mid-year-pop-est"
+        ],
+        "answer": "963"
+    },
+    {
+        "query": "How many people aged 90 or over live in England and Wales in total?",
+        "datasets": [
+            "mid-year-pop-est"
+        ],
+        "answer": "551758"
+    },
+    {
+        "query": "How many people aged 100 or over died last week?",
+        "datasets": [
+            "weekly-deaths-age-sex"
+        ],
+        "answer": "32 people aged 100 or over died in Week 47 of 2025 in England and Wales. This comprised 29 deaths in England and 3 deaths in Wales."
+    },
+    {
+        "query": "How many 72 year olds died in London last week?",
+        "datasets": [
+            "weekly-deaths-age-sex"
+        ],
+        "answer": "The ONS does not publish weekly death statistics broken down by single year of age (72 years). However, the closest available data shows that in Week 47, 2025, there were 31 deaths of people aged 70-74 in London."
+    },
+    {
+        "query": "how many people live in the uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many people live in england",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "what was the population of england in 2021 census",
+        "datasets": [
+            "TS008"
+        ]
+    },
+    {
+        "query": "how many children in the uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many adults in the uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "what is the population density of london",
+        "datasets": [
+            "TS006"
+        ]
+    },
+    {
+        "query": "i am a 72 year old man what is my life expectancy",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "what does the uk import from usa",
+        "datasets": [
+            "trade"
+        ]
+    },
+    {
+        "query": "did brexit change trade with eu",
+        "datasets": [
+            "trade"
+        ]
+    },
+    {
+        "query": "who are the uk's main trading partners",
+        "datasets": [
+            "trade"
+        ]
+    },
+    {
+        "query": "what percentage of men are gay",
+        "datasets": [
+            "RM189",
+            "TS008"
+        ]
+    },
+    {
+        "query": "what is the average salary in the uk",
+        "datasets": [
+            "ashe-tables-7-and-8"
+        ]
+    },
+    {
+        "query": "how rich am i",
+        "datasets": [
+            "ashe-tables-7-and-8"
+        ]
+    },
+    {
+        "query": "how many muslims in uk",
+        "datasets": [
+            "TS031"
+        ]
+    },
+    {
+        "query": "what is the population of the uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many people died from covid",
+        "datasets": [
+            "weekly-deaths-region"
+        ]
+    },
+    {
+        "query": "how long will i live",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "when will i die",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "what is the population of england",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "what is inflation",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "how many people died today",
+        "datasets": [
+            "weekly-deaths-age-sex"
+        ]
+    },
+    {
+        "query": "is covid still around",
+        "datasets": [
+            "weekly-deaths-region"
+        ]
+    },
+    {
+        "query": "how many people in the uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "what is cpi",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "are covid cases rising again in uk",
+        "datasets": [
+            "weekly-deaths-region"
+        ]
+    },
+    {
+        "query": "how many people in uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many people live in london",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many people are in the uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "what does uk import from usa",
+        "datasets": [
+            "trade"
+        ]
+    },
+    {
+        "query": "how many people in england",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many people died of covid",
+        "datasets": [
+            "weekly-deaths-region"
+        ]
+    },
+    {
+        "query": "what is inflation rate uk",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "what is life expectancy",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "what is my life expectancy",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "how many people live in uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how much is a packet of cigarettes",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "what is the current rate of inflation",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "how much are cigarettes in uk",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "how many households in the uk",
+        "datasets": [
+            "TS041"
+        ]
+    },
+    {
+        "query": "what percentage of the uk is muslim",
+        "datasets": [
+            "TS031"
+        ]
+    },
+    {
+        "query": "what does uk export to usa",
+        "datasets": [
+            "trade"
+        ]
+    },
+    {
+        "query": "what do we import from usa",
+        "datasets": [
+            "trade"
+        ]
+    },
+    {
+        "query": "what is my nationality",
+        "datasets": [
+            "TS028"
+        ]
+    },
+    {
+        "query": "what is the average life expectancy in the uk",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "what is the average wage in the uk",
+        "datasets": [
+            "ashe-tables-7-and-8"
+        ]
+    },
+    {
+        "query": "are you wealthy for your age",
+        "datasets": [
+            "generational-income"
+        ]
+    },
+    {
+        "query": "what is the inflation rate in the uk",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "how is life expectancy calculated",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "what percentage of the uk is black",
+        "datasets": [
+            "TS022"
+        ]
+    },
+    {
+        "query": "what is the population of uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many muslims in the uk",
+        "datasets": [
+            "TS031"
+        ]
+    },
+    {
+        "query": "what is the life expectancy",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "when are the next inflation figures due",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "how many people are born a day",
+        "datasets": [
+            "weekly-deaths-age-sex"
+        ]
+    },
+    {
+        "query": "what percentage of the uk is white",
+        "datasets": [
+            "TS022"
+        ]
+    },
+    {
+        "query": "how many people live in wales",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many pensioners in uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "what is the current inflation rate",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "how many people die in the uk each day",
+        "datasets": [
+            "weekly-deaths-age-sex"
+        ]
+    },
+    {
+        "query": "how many people die a day",
+        "datasets": [
+            "weekly-deaths-age-sex"
+        ]
+    },
+    {
+        "query": "what is uk gdp",
+        "datasets": [
+            "gdp-to-four-decimal-places"
+        ]
+    },
+    {
+        "query": "how many immigrants are in the uk",
+        "datasets": [
+            "TS019"
+        ]
+    },
+    {
+        "query": "how many trans people in the uk",
+        "datasets": [
+            "TS070"
+        ]
+    },
+    {
+        "query": "what is the current rate of inflation in the uk",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "how many jews in uk",
+        "datasets": [
+            "TS031"
+        ]
+    },
+    {
+        "query": "how many people died of covid in uk",
+        "datasets": [
+            "weekly-deaths-region"
+        ]
+    },
+    {
+        "query": "what's the population of the uk",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "what's the population of england",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "what does the uk export to usa",
+        "datasets": [
+            "trade"
+        ]
+    },
+    {
+        "query": "are people still dying from covid",
+        "datasets": [
+            "weekly-deaths-region"
+        ]
+    },
+    {
+        "query": "what is the population of wales",
+        "datasets": [
+            "mid-year-pop-est"
+        ]
+    },
+    {
+        "query": "how many babies are born a day",
+        "datasets": [
+            "weekly-deaths-age-sex"
+        ]
+    },
+    {
+        "query": "am i rich",
+        "datasets": [
+            "ashe-tables-7-and-8"
+        ]
+    },
+    {
+        "query": "what is inflation rate",
+        "datasets": [
+            "cpih01"
+        ]
+    },
+    {
+        "query": "what percentage of people are gay",
+        "datasets": [
+            "TS077"
+        ]
+    },
+    {
+        "query": "what age will i die",
+        "datasets": [
+            "life-expectancy-by-local-authority"
+        ]
+    },
+    {
+        "query": "what do we import from america",
+        "datasets": [
+            "trade"
+        ]
+    },
+    {
+        "query": "how many trans people in uk",
+        "datasets": [
+            "TS070"
+        ]
+    }
+]
