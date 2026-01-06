@@ -3,7 +3,7 @@ import os
 
 import aws_cdk as cdk
 
-from data_stack import DataStack
+from lib.data_stack import DataStack
 
 
 env = cdk.Environment(
