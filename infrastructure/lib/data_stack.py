@@ -2,8 +2,6 @@ from aws_cdk import (
     Stack,
     RemovalPolicy,
     Duration,
-    CfnOutput,
-    Size,
     aws_s3 as s3,
     aws_glue as glue,
     aws_athena as athena,
@@ -69,6 +67,12 @@ class DataStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             enforce_ssl=True,
             removal_policy=RemovalPolicy.DESTROY
+        )
+
+        ssm.StringParameter(
+            self, "AthenaQueryResultsBucketParam",
+            parameter_name="/data-analyst/athena-query-results-bucket",
+            string_value=self.athena_query_results_bucket.bucket_name
         )
 
         # Glue Database for Athena tables

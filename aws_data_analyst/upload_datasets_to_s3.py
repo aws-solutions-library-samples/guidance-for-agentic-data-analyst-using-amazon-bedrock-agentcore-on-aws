@@ -9,12 +9,7 @@ from botocore.exceptions import ClientError
 
 from aws_data_analyst import DATASETS_DIR
 from aws_data_analyst.datasets import iterate_datasets
-
-
-
-ssm = boto3.client('ssm')
-S3_BUCKET = ssm.get_parameter(Name='/data-analyst/data-bucket')['Parameter']['Value']
-S3_PREFIX = "datasets"
+from aws_data_analyst.s3_data import S3_DATA_BUCKET
 
 
 s3_client = boto3.client('s3')
@@ -40,12 +35,12 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
     Returns:
         UploadStatus
     """
-    logger.info(f"[UPLOAD] {local_file.name} to s3://{S3_BUCKET}/{s3_key}")
+    logger.info(f"  Upload {local_file.name} to s3://{S3_DATA_BUCKET}/{s3_key}")
     try:
         # Check if file already exists
         try:
-            s3_client.head_object(Bucket=S3_BUCKET, Key=s3_key)
-            logger.info("[SKIPPED]")
+            s3_client.head_object(Bucket=S3_DATA_BUCKET, Key=s3_key)
+            logger.info("    Skipped")
             return UploadStatus.SKIPPED
         except ClientError as e:
             if e.response['Error']['Code'] != '404':
@@ -55,11 +50,11 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
         # Upload the file
         s3_client.upload_file(
             str(local_file),
-            S3_BUCKET,
+            S3_DATA_BUCKET,
             s3_key,
             ExtraArgs={'ContentType': content_type}
         )
-        logger.info("[UPLOAD SUCCESS]")
+        logger.info("    Success")
         return UploadStatus.UPLOADED
         
     except ClientError as e:
@@ -71,18 +66,16 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
 
 
 def upload_dataset(dataset_id):
-    logger.info(f"[DATASET] {dataset_id}")
     dataset_dir = DATASETS_DIR / dataset_id
-    s3_uri = f"{S3_PREFIX}/{dataset_id}"
 
     parquet_status = upload_file_to_s3(
         dataset_dir / "data.parquet",
-        f"{s3_uri}/data.parquet", 
+        f"datasets/{dataset_id}/data.parquet", 
         'application/octet-stream'
     )
     metadata_status = upload_file_to_s3(
         dataset_dir / "dataset.json",
-        f"{s3_uri}/dataset.json", 
+        f"metadata/{dataset_id}/dataset.json", 
         'application/json'
     )
 
@@ -92,7 +85,8 @@ def upload_dataset(dataset_id):
 def upload_datasets():
     datasets = list(iterate_datasets())
     parquet_files, metadata_files = Counter(), Counter()
-    for dataset in datasets:
+    for i, dataset in enumerate(datasets, 1):
+        logger.info(f"# DATASET {i}/{len(datasets)}: {dataset['id']}")
         parquet_status, metadata_status = upload_dataset(dataset['id'])
         parquet_files[parquet_status] += 1
         metadata_files[metadata_status] += 1

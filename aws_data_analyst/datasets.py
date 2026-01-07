@@ -1,9 +1,13 @@
 import json
 from os import listdir
 from collections import Counter
+from abc import ABC, abstractmethod
+
+import pandas as pd
 
 from aws_data_analyst import DATASETS_DIR
-import pandas as pd
+import time
+
 
 
 def dataset_data(dataset_id):
@@ -72,9 +76,26 @@ def load_description(data_id, max_dim_items=20, skip_examples=False):
     return metadata_to_description(metadata, max_dim_items, skip_examples)
 
 
-class QueryHandler:
+class QueryHandler(ABC):
     def __init__(self) -> None:
         self.datasets = Counter()
+        self.latencies = []
+
+    def metrics(self):
+        return {
+            'datasets': dict(self.datasets),
+            'latencies': self.latencies
+        }
+
+    @abstractmethod
+    def query_ons_dataset(self, dataset_id, dimension_filters=None):
+        pass
+
+
+class LocalQueryHandler(QueryHandler):
+    def __init__(self) -> None:
+        self.datasets = Counter()
+        self.latencies = []
     
     def query_ons_dataset(self, dataset_id, dimensions):
         self.datasets[dataset_id] += 1
@@ -82,12 +103,15 @@ class QueryHandler:
         if not data_path.exists():
             return None
         else:
+            start = time.time()
             df = pd.read_parquet(data_path)
             for dim, value in dimensions.items():
                 df = df[df[dim] == value]
+            latency = time.time() - start
+            self.latencies.append(latency)
             return df
 
-    def metrics(self):
-        return {
-            'datasets': self.datasets
-        }
+
+class LocalDatasetLoader:
+    def load_metadata(self, dataset_id):
+        return load_dataset_metadata(dataset_id)
