@@ -43,7 +43,7 @@ class DataStack(Stack):
         dataset_embeddings_index.node.add_dependency(self.dataset_embeddings)
 
         # S3 bucket for parquet files
-        self.data_bucket = s3.Bucket(
+        self.athena_data_bucket = s3.Bucket(
             self, "AthenaDataBucket",
             bucket_name=f"datasets-{self.account}-{self.region}",
             encryption=s3.BucketEncryption.S3_MANAGED,
@@ -56,7 +56,7 @@ class DataStack(Stack):
         ssm.StringParameter(
             self, "DataBucketParam",
             parameter_name="/data-analyst/data-bucket",
-            string_value=self.data_bucket.bucket_name
+            string_value=self.athena_data_bucket.bucket_name
         )
 
         # S3 bucket for Athena query results
@@ -175,7 +175,7 @@ class DataStack(Stack):
                             comment="Related content links"
                         ),
                     ],
-                    location=f"s3://{self.data_bucket.bucket_name}/datasets-metadata/",
+                    location=f"s3://{self.athena_data_bucket.bucket_name}/datasets-metadata/",
                     input_format="org.apache.hadoop.mapred.TextInputFormat",
                     output_format="org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat",
                     serde_info=glue.CfnTable.SerdeInfoProperty(
@@ -240,7 +240,7 @@ class DataStack(Stack):
         )
         
         # Grant Lambda permissions to read from S3
-        self.data_bucket.grant_read(lambda_role)
+        self.athena_data_bucket.grant_read(lambda_role)
         
         # Grant Lambda permissions to create/update Glue tables
         lambda_role.add_to_policy(iam.PolicyStatement(
@@ -264,7 +264,7 @@ class DataStack(Stack):
         # Set environment variables
         env_vars = {
             "GLUE_DATABASE_NAME": self.glue_database.ref,
-            "BUCKET_NAME": self.data_bucket.bucket_name
+            "BUCKET_NAME": self.athena_data_bucket.bucket_name
         }
 
         # This separates the heavy pyarrow dependency from the function code
@@ -293,7 +293,7 @@ class DataStack(Stack):
         )
         
         # S3 event notification to trigger Lambda for .parquet files in datasets/ prefix
-        self.data_bucket.add_event_notification(
+        self.athena_data_bucket.add_event_notification(
             s3.EventType.OBJECT_CREATED,
             s3n.LambdaDestination(self.glue_table_creator),
             s3.NotificationKeyFilter(
