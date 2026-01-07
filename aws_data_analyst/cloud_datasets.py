@@ -4,7 +4,7 @@ import time
 
 import s3fs
 
-from aws_data_analyst.s3_data import S3_DATASETS
+from aws_data_analyst.s3_data import S3_DATASETS_METADATA
 from aws_data_analyst.datasets import QueryHandler
 from aws_data_analyst.athena_query import athena_query
 
@@ -23,7 +23,7 @@ class CloudDatasetLoader:
         loading_thread.start()
 
     def __load_metadata(self):
-        for dataset_uri in S3.ls(S3_DATASETS):
+        for dataset_uri in S3.ls(S3_DATASETS_METADATA):
             dataset_id = dataset_uri.split('/')[-1]
             self.load_metadata(dataset_id)
 
@@ -31,7 +31,7 @@ class CloudDatasetLoader:
         if dataset_id in self.metadata:
             return self.metadata[dataset_id]
 
-        metadata_uri = f"{S3_DATASETS}{dataset_id}/dataset.json"
+        metadata_uri = f"{S3_DATASETS_METADATA}{dataset_id}/dataset.json"
         try:
             metadata = json.load(S3.open(metadata_uri))
             self.metadata[dataset_id] = metadata

@@ -93,10 +93,6 @@ class QueryHandler(ABC):
 
 
 class LocalQueryHandler(QueryHandler):
-    def __init__(self) -> None:
-        self.datasets = Counter()
-        self.latencies = []
-    
     def query_ons_dataset(self, dataset_id, dimensions):
         self.datasets[dataset_id] += 1
         data_path = DATASETS_DIR / dataset_id / "data.parquet"

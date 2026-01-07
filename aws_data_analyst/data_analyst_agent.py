@@ -2,6 +2,7 @@ import base64
 import tempfile
 import shutil
 from os import path
+from enum import Enum
 
 from strands import Agent
 from strands.models import BedrockModel
@@ -12,12 +13,12 @@ from jinja2 import Template
 
 from aws_data_analyst.python_environment import PythonInterpreter
 from aws_data_analyst.datasets_db import DatasetsDB
-from aws_data_analyst.datasets import load_dataset_metadata, metadata_to_description
+from aws_data_analyst.datasets import metadata_to_description
 from aws_data_analyst.dataset_search_tool import DatasetSearch
 from aws_data_analyst.bedrock_models import MODELS, DEFAULT_MODEL_ID
 
 
-CACHE = Cache("/tmp/.cache/ONS_Agent")
+CACHE = Cache("/tmp/.cache/DataAnalystAgent")
 
 TEMPERATURE = 0.2
 DATASET_RETRIEVAL_TOPK = 3
@@ -62,7 +63,7 @@ Pay attention to these guidelines:
 - If asked for a given age, provide information from the closest age-band containing this age in the dataset.
 """)
 
-CODE_PREAMBLE = """
+CODE_PREAMBLE = Template("""
 # Data and Time
 import numpy as np
 import pandas as pd
@@ -75,36 +76,56 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # ONS Dataset Query
-from aws_data_analyst.datasets import QueryHandler
+{{QUERY_HANDLER}}
+""")
 
-query_handler = QueryHandler()
+CODE_LOCAL_QUERY_HANDLER = """
+from aws_data_analyst.datasets import LocalQueryHandler
+
+query_handler = LocalQueryHandler()
 """
 
-# Render a generic system prompt prototype to be used as part of the cache-key
-SYSTEM_PROMPT_PROTOTYPE = SYSTEM_PROMPT_TEMPLATE.render(TMP_DIR="/tmp", CODE_PREAMBLE=CODE_PREAMBLE)
+CODE_CLOUD_QUERY_HANDLER = """
+from aws_data_analyst.cloud_datasets import CloudQueryHandler
+
+query_handler = CloudQueryHandler()
+"""
 
 
-def prepare_prompt(datasets_db, query, datasets=None):
-    if datasets is None:
-        datasets = datasets_db.search_entries(query, topK=DATASET_RETRIEVAL_TOPK)
-        
-    prompt_buffer = [f"User Query: {query}"]
-    if datasets:
-        prompt_buffer.append("\nThe following are ONS datasets whose descriptions are semantically similar to this query:")
-        for dataset in datasets['entries']:
-            metadata = load_dataset_metadata(dataset['key'])
-            prompt_buffer.append(metadata_to_description(metadata, max_dim_items=400))
-    return '\n'.join(prompt_buffer)
+class ResourceLocation(Enum):
+    LOCAL = "local"
+    CLOUD = "cloud" 
 
 
 class DataAnalystAgent:
-    def __init__(self, model_id=DEFAULT_MODEL_ID, session_history=None):
+    def __init__(self,
+                 model_id=DEFAULT_MODEL_ID,
+                 temperature=TEMPERATURE,
+                 resource_location=ResourceLocation.CLOUD,
+                 session_history=None):
         self.model_id = model_id
+        self.temperature = temperature
         self.cost = MODELS[model_id]['cost']
 
-        self.tmp_dir = tempfile.mkdtemp(prefix='ons_', dir='/tmp')
-        self.python_repl = PythonInterpreter(CODE_PREAMBLE)
+        if resource_location == ResourceLocation.CLOUD:
+            from aws_data_analyst.cloud_datasets import CloudDatasetLoader
+            self.datasets_loader = CloudDatasetLoader()
+
+            code_preamble = CODE_PREAMBLE.render(QUERY_HANDLER=CODE_CLOUD_QUERY_HANDLER)
+        
+        elif resource_location == ResourceLocation.LOCAL:
+            from aws_data_analyst.datasets import LocalDatasetLoader
+            self.datasets_loader = LocalDatasetLoader()
+
+            code_preamble = CODE_PREAMBLE.render(QUERY_HANDLER=CODE_LOCAL_QUERY_HANDLER)
+        
+
+        self.tmp_dir = tempfile.mkdtemp(prefix='data_analyst_', dir='/tmp')
+        self.python_repl = PythonInterpreter(code_preamble)
         self.datasets_db = DatasetsDB()
+
+
+
         self.agent = Agent(
             model = BedrockModel(
                 model_id=model_id,
@@ -112,11 +133,14 @@ class DataAnalystAgent:
             ),
             tools=[
                 self.python_repl.get_tool(),
-                DatasetSearch(self.datasets_db).get_tool()
+                DatasetSearch(self.datasets_db, self.datasets_loader).get_tool()
             ],
             callback_handler=None,
-            system_prompt=SYSTEM_PROMPT_TEMPLATE.render(CODE_PREAMBLE=CODE_PREAMBLE, TMP_DIR=self.tmp_dir),
+            system_prompt=SYSTEM_PROMPT_TEMPLATE.render(CODE_PREAMBLE=code_preamble, TMP_DIR=self.tmp_dir),
             messages=session_history)
+        
+        # Render a generic system prompt prototype to be used as part of the cache-key
+        self.prompt_template_prototype = SYSTEM_PROMPT_TEMPLATE.render(TMP_DIR="/tmp", CODE_PREAMBLE=code_preamble)
 
     def __del__(self):
         try:
@@ -127,10 +151,22 @@ class DataAnalystAgent:
     def __cache_key(self, prompt):
         return str([
             ("model_id", self.model_id),
-            ("temperature", TEMPERATURE),
-            ("system_prompt", SYSTEM_PROMPT_PROTOTYPE),
+            ("temperature", self.temperature),
+            ("system_prompt", self.prompt_template_prototype),
             ("prompt", prompt),
         ])
+
+    def prepare_prompt(self, query, datasets=None):
+        if datasets is None:
+            datasets = self.datasets_db.search_entries(query, topK=DATASET_RETRIEVAL_TOPK)
+            
+        prompt_buffer = [f"User Query: {query}"]
+        if datasets:
+            prompt_buffer.append("\nThe following are ONS datasets whose descriptions are semantically similar to this query:")
+            for dataset in datasets['entries']:
+                metadata = self.datasets_loader.load_metadata(dataset['key'])
+                prompt_buffer.append(metadata_to_description(metadata, max_dim_items=400))
+        return '\n'.join(prompt_buffer)
 
     def on_demand_cost(self, metrics):
         return metrics['accumulated_usage']['inputTokens'] * self.cost['on_demand']['input'] + metrics['accumulated_usage']['outputTokens'] * self.cost['on_demand']['output']
@@ -165,7 +201,7 @@ class DataAnalystAgent:
             query_metrics = self.python_repl.state['query_handler'].metrics()
             datasets = []
             for dataset, count in query_metrics['datasets'].items():
-                metadata = load_dataset_metadata(dataset)
+                metadata = self.datasets_loader.load_metadata(dataset)
                 datasets.append({
                     'key': dataset,
                     'title': metadata['title'],
@@ -177,7 +213,7 @@ class DataAnalystAgent:
         return response_data
 
     def handle_message(self, message, datasets=None, cached=True):
-        prompt = prepare_prompt(self.datasets_db, message, datasets=datasets)
+        prompt = self.prepare_prompt(message, datasets=datasets)
         
         cache_key = self.__cache_key(prompt)
         if cached and cache_key in CACHE:
@@ -191,7 +227,7 @@ class DataAnalystAgent:
         return response_data
 
     async def stream_async(self, message, datasets=None, cached=True):
-        prompt = prepare_prompt(self.datasets_db, message, datasets=datasets)
+        prompt = self.prepare_prompt(message, datasets=datasets)
         
         cache_key = self.__cache_key(prompt)
         if cached and cache_key in CACHE:
@@ -225,7 +261,7 @@ if __name__ == "__main__":
     parser.add_argument('query')
     args = parser.parse_args()
 
-    agent = DataAnalystAgent()
+    agent = DataAnalystAgent(resource_location=ResourceLocation.CLOUD)
 
     async def process_streaming_response():
         agent_stream = agent.stream_async(args.query, cached=False)
