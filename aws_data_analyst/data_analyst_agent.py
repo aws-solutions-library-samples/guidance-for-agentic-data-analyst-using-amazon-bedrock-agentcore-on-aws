@@ -124,8 +124,6 @@ class DataAnalystAgent:
         self.python_repl = PythonInterpreter(code_preamble)
         self.datasets_db = DatasetsDB()
 
-
-
         self.agent = Agent(
             model = BedrockModel(
                 model_id=model_id,

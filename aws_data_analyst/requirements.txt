@@ -1,0 +1,16 @@
+# Used for the AWS Agentcore deployment
+# Runtime
+strands-agents==1.20.0
+bedrock-agentcore==1.1.1
+aws-opentelemetry-distro==0.12.0
+boto3==1.42.2
+json_repair==0.30.3
+diskcache==5.6.3
+jinja2==3.1.6
+s3fs==0.4.2
+
+# Used by the Agent for the data-analysis code
+numpy==1.26.4
+pandas==2.2.3
+matplotlib==3.10.7
+seaborn==0.13.2
