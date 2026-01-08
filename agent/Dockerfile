@@ -25,4 +25,4 @@ COPY . .
 
 # Use the full module path
 
-CMD ["opentelemetry-instrument", "python", "-m", "data_analyst_agent_service"]
+CMD ["opentelemetry-instrument", "python", "-m", "aws_data_analyst.data_analyst_agent_service"]

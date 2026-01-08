@@ -37,7 +37,7 @@ class AgentCoreStack(Stack):
             empty_on_delete=True,
             image_scan_on_push=True,
         )
-        source_asset = s3_assets.Asset(self, "SourceAsset", path="../aws_data_analyst")
+        source_asset = s3_assets.Asset(self, "SourceAsset", path="../agent")
         
         codebuild_role = iam.Role(
             self,
