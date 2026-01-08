@@ -1,3 +1,4 @@
+import os
 import json
 from sys import platform
 
@@ -7,8 +8,7 @@ import requests
 
 class AgentCore:
     def __init__(self):
-        from config import Config
-        self.agent_arn = Config.AGENT_ARN
+        self.agent_arn = os.getenv("AGENT_ARN")
         self.agent_core_client = boto3.client('bedrock-agentcore')
 
     def invoke(self, message, session_history=None):

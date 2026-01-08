@@ -9,6 +9,7 @@
 # on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express
 # or implied. See the License for the specific language governing
 # permissions and limitations under the License.
+import os
 import boto3
 import json
 from streamlit_cognito_auth import CognitoAuthenticator
@@ -27,12 +28,15 @@ class LocalMockAuthenticator:
 
 
 class Auth:
-    def __init__(self, secret_id, region):
+    def __init__(self):
         if platform == "darwin":
             self.authenticator = LocalMockAuthenticator()
         else:
+            region_name = os.environ.get("DEPLOYMENT_REGION")
+            secret_id = os.environ.get("SECRETS_MANAGER_ID")
+
             # Get Cognito parameters from Secrets Manager
-            secretsmanager_client = boto3.client("secretsmanager", region_name=region)
+            secretsmanager_client = boto3.client("secretsmanager", region_name=region_name)
             response = secretsmanager_client.get_secret_value(SecretId=secret_id)
             secret_string = json.loads(response['SecretString'])
 

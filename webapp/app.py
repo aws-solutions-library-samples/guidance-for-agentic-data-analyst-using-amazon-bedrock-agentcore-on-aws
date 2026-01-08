@@ -1,13 +1,12 @@
 import streamlit as st
 
 from auth import Auth
-from config import Config
 from agent_client import AgentClient
 
 
 # User Authentication
 if "auth" not in st.session_state:
-    st.session_state.auth = Auth(Config.SECRETS_MANAGER_ID, Config.DEPLOYMENT_REGION)
+    st.session_state.auth = Auth()
 authenticator = st.session_state.auth.authenticator
 if not authenticator.login():
     st.stop()
