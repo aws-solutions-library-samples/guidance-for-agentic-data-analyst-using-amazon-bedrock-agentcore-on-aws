@@ -216,12 +216,6 @@
         ]
     },
     {
-        "query": "what is cpi",
-        "datasets": [
-            "cpih01"
-        ]
-    },
-    {
         "query": "are covid cases rising again in uk",
         "datasets": [
             "weekly-deaths-region"
@@ -330,12 +324,6 @@
         ]
     },
     {
-        "query": "what is my nationality",
-        "datasets": [
-            "TS028"
-        ]
-    },
-    {
         "query": "what is the average life expectancy in the uk",
         "datasets": [
             "life-expectancy-by-local-authority"
@@ -348,21 +336,9 @@
         ]
     },
     {
-        "query": "are you wealthy for your age",
-        "datasets": [
-            "generational-income"
-        ]
-    },
-    {
         "query": "what is the inflation rate in the uk",
         "datasets": [
             "cpih01"
-        ]
-    },
-    {
-        "query": "how is life expectancy calculated",
-        "datasets": [
-            "life-expectancy-by-local-authority"
         ]
     },
     {
@@ -384,21 +360,9 @@
         ]
     },
     {
-        "query": "what is the life expectancy",
-        "datasets": [
-            "life-expectancy-by-local-authority"
-        ]
-    },
-    {
         "query": "when are the next inflation figures due",
         "datasets": [
             "cpih01"
-        ]
-    },
-    {
-        "query": "how many people are born a day",
-        "datasets": [
-            "weekly-deaths-age-sex"
         ]
     },
     {
