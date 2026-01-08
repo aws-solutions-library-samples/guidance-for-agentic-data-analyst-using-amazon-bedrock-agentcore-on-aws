@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import boto3
 
-from aws_data_analyst.s3_data import S3_ATHENA_QUERY_RESULTS
+from aws_data_analyst.infrastructure import S3_ATHENA_QUERY_RESULTS
 
 
 ATHENA_CLIENT = boto3.client('athena')
@@ -78,5 +78,4 @@ def athena_query(dataset_id, dimension_filters=None, limit=None):
     
     df = run_athena_query(query)
     df['observation'] = pd.to_numeric(df['observation'])
-    del df['row_id']
     return df

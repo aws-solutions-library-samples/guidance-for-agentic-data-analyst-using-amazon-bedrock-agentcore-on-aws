@@ -12,6 +12,7 @@ from aws_cdk import (
     aws_codebuild as codebuild,
     aws_s3_assets as s3_assets,
     aws_bedrockagentcore as bedrockagentcore,
+    aws_ssm as ssm
 )
 from constructs import Construct
 
@@ -417,10 +418,15 @@ class AgentCoreStack(Stack):
             },
         )
 
-        # AgentCore Runtime depends on successful image build
+        # AgentCore Runtime depends on successful image build and trace configuration
         self.agent_runtime.node.add_dependency(trigger_build)
         
         # ===== Stack Outputs =====
+        ssm.StringParameter(
+            self, "AgentRuntimeARNParam",
+            parameter_name="/data-analyst/agent-runtime-arn",
+            string_value=self.agent_runtime.attr_agent_runtime_arn
+        )
         CfnOutput(
             self,
             "AgentRuntimeArn",

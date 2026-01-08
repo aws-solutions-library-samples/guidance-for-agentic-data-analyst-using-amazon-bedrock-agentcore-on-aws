@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 
 from aws_data_analyst import DATASETS_DIR
 from aws_data_analyst.datasets import iterate_datasets
-from aws_data_analyst.s3_data import S3_DATA_BUCKET
+from aws_data_analyst.infrastructure import S3_DATA_BUCKET
 
 
 s3_client = boto3.client('s3')

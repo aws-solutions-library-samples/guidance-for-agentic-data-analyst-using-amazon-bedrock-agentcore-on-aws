@@ -2,8 +2,7 @@ import json
 
 import boto3
 
-
-AGENT_ARN = "arn:aws:bedrock-agentcore:us-east-1:253707965750:runtime/data_analyst_agent_service_cdk-K9B8A19EX5"
+from aws_data_analyst.infrastructure import AGENT_ARN
 
 
 class AgentCoreClient:

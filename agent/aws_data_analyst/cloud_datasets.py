@@ -4,7 +4,7 @@ import time
 
 import s3fs
 
-from aws_data_analyst.s3_data import S3_DATASETS_METADATA
+from aws_data_analyst.infrastructure import S3_DATASETS_METADATA
 from aws_data_analyst.datasets import QueryHandler
 from aws_data_analyst.athena_query import athena_query
 
@@ -37,6 +37,7 @@ class CloudDatasetLoader:
             self.metadata[dataset_id] = metadata
         except Exception as e:
             print(f"[{dataset_id}] Error loading dataset metadata from: {metadata_uri}\n{e}")
+            metadata = None
         
         return metadata
 
