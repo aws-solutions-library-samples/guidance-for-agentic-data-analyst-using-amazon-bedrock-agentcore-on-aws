@@ -127,7 +127,7 @@ class WebAppStack(Stack):
             environment={
                 "SECRETS_MANAGER_ID": secret.secret_name,
                 "DEPLOYMENT_REGION": self.region,
-                "AGENT_ARN": agent_stack.agent_runtime_arn,
+                "AGENT_ARN": agent_stack.agent_runtime.attr_agent_runtime_arn,
             }
         )
 

@@ -394,7 +394,7 @@ class AgentCoreStack(Stack):
             roles=[agent_role]
         )
 
-        agent_runtime = bedrockagentcore.CfnRuntime(
+        self.agent_runtime = bedrockagentcore.CfnRuntime(
             self,
             "AgentRuntime",
             agent_runtime_name=agent_name,
@@ -418,48 +418,13 @@ class AgentCoreStack(Stack):
         )
 
         # AgentCore Runtime depends on successful image build
-        agent_runtime.node.add_dependency(trigger_build)
+        self.agent_runtime.node.add_dependency(trigger_build)
         
-        # ===== Expose properties for cross-stack references =====
-        self.agent_runtime_arn = agent_runtime.attr_agent_runtime_arn
-        self.agent_runtime_id = agent_runtime.attr_agent_runtime_id
-        self.agent_role_arn = agent_role.role_arn
-
         # ===== Stack Outputs =====
-        CfnOutput(
-            self,
-            "AgentRuntimeId",
-            description="ID of the created agent runtime",
-            value=agent_runtime.attr_agent_runtime_id,
-            export_name=f"{self.stack_name}-AgentRuntimeId",
-        )
-
         CfnOutput(
             self,
             "AgentRuntimeArn",
             description="ARN of the created agent runtime",
-            value=agent_runtime.attr_agent_runtime_arn,
+            value=self.agent_runtime.attr_agent_runtime_arn,
             export_name=f"{self.stack_name}-AgentRuntimeArn",
-        )
-
-        CfnOutput(
-            self,
-            "AgentRoleArn",
-            description="ARN of the agent execution role",
-            value=agent_role.role_arn,
-            export_name=f"{self.stack_name}-AgentRoleArn",
-        )
-
-        CfnOutput(
-            self,
-            "ECRRepositoryUri",
-            description="URI of the ECR repository",
-            value=ecr_repository.repository_uri,
-        )
-
-        CfnOutput(
-            self,
-            "ECRRepositoryName",
-            description="Name of the ECR repository",
-            value=ecr_repository.repository_name,
         )

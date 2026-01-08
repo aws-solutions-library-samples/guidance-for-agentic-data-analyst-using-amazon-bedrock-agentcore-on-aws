@@ -17,7 +17,9 @@ from pathlib import Path
 # See: https://github.com/bimnett/cdk-s3-vectors/blob/main/examples/python.py
 import cdk_s3_vectors as s3_vectors
 
+
 EMBEDDING_DIMENSION = 1024
+
 
 class DataStack(Stack):
     def __init__(
@@ -86,7 +88,7 @@ class DataStack(Stack):
         )
 
         # Glue metadata table for dataset metadata JSON files
-        self.datasets_metadata_table = glue.CfnTable(
+        datasets_metadata_table = glue.CfnTable(
             self, "DatasetsMetadataTable",
             catalog_id=self.account,
             database_name=self.glue_database.ref,
@@ -188,10 +190,10 @@ class DataStack(Stack):
                 )
             )
         )
-        self.datasets_metadata_table.node.add_dependency(self.glue_database)
+        datasets_metadata_table.node.add_dependency(self.glue_database)
 
         # Athena Workgroup for dataset queries
-        self.athena_workgroup = athena.CfnWorkGroup(
+        athena_workgroup = athena.CfnWorkGroup(
             self, "AthenaWorkgroup",
             name="datasets-workgroup",
             description="Workgroup for querying datasets with cost tracking and optimization",
@@ -224,7 +226,7 @@ class DataStack(Stack):
                 }
             ]
         )
-        self.athena_workgroup.node.add_dependency(self.athena_query_results_bucket)
+        athena_workgroup.node.add_dependency(self.athena_query_results_bucket)
 
         # Lambda function to automatically create Glue tables when Parquet files are uploaded
         lambda_dir = Path(__file__).parent.parent / "lambda"
@@ -261,12 +263,6 @@ class DataStack(Stack):
             ]
         ))
 
-        # Set environment variables
-        env_vars = {
-            "GLUE_DATABASE_NAME": self.glue_database.ref,
-            "BUCKET_NAME": self.athena_data_bucket.bucket_name
-        }
-
         # This separates the heavy pyarrow dependency from the function code
         # For Python 3.13: arn:aws:lambda:region:336392948345:layer:AWSSDKPandas-Python313:5
         pyarrow_layer = lambda_.LayerVersion.from_layer_version_arn(
@@ -276,7 +272,7 @@ class DataStack(Stack):
 
         parser_lambda_dir = lambda_dir / "parse_dataset"
         
-        self.glue_table_creator = lambda_.Function(
+        glue_table_creator = lambda_.Function(
             self, "GlueTableCreatorFunction",
             runtime=lambda_.Runtime.PYTHON_3_13,
             handler="create_glue_table.lambda_handler",
@@ -288,14 +284,17 @@ class DataStack(Stack):
             layers=[pyarrow_layer],
             timeout=Duration.minutes(15), # Keeping the Lambda duration maximum for large parquet files
             memory_size=10240,  # Keeping the memory high for large parquet files
-            environment=env_vars,
+            environment={
+                "GLUE_DATABASE_NAME": self.glue_database.ref,
+                "BUCKET_NAME": self.athena_data_bucket.bucket_name
+            },
             description="Automatically creates Glue tables when new Parquet files are uploaded"
         )
         
         # S3 event notification to trigger Lambda for .parquet files in datasets/ prefix
         self.athena_data_bucket.add_event_notification(
             s3.EventType.OBJECT_CREATED,
-            s3n.LambdaDestination(self.glue_table_creator),
+            s3n.LambdaDestination(glue_table_creator),
             s3.NotificationKeyFilter(
                 prefix="datasets/",
                 suffix=".parquet"
