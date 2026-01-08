@@ -1,3 +1,4 @@
+*.bkp
 __pycache__/
 cdk.context.json
 cdk.out/
