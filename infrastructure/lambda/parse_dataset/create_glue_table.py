@@ -10,14 +10,20 @@ This function:
 5. Generates table name following convention: dataset_{id}
 6. Creates or updates Glue table with extracted schema
 """
-
 import json
-import boto3
 import os
 import urllib.parse
 import re
 from typing import Dict, List, Any, Optional
 import logging
+import io
+
+import boto3
+from botocore.exceptions import ClientError
+
+import pyarrow.parquet as pq
+import pyarrow.types as pat
+
 
 # Configure logging
 logger = logging.getLogger()
@@ -116,11 +122,6 @@ def extract_parquet_schema(bucket: str, key: str) -> List[Dict[str, str]]:
         S3AccessError: If S3 file cannot be accessed
         ParquetSchemaError: If Parquet file cannot be parsed
     """
-    import pyarrow.parquet as pq
-    import pyarrow as pa
-    import io
-    from botocore.exceptions import ClientError
-    
     logger.info(f"Reading Parquet schema from s3://{bucket}/{key}")
     
     try:
@@ -174,9 +175,6 @@ def map_pyarrow_to_glue_type(arrow_type) -> str:
     Returns:
         Glue/Athena type string
     """
-    import pyarrow as pa
-    import pyarrow.types as pat
-    
     # String types
     if pat.is_string(arrow_type) or pat.is_unicode(arrow_type) or pat.is_large_string(arrow_type):
         return 'string'
@@ -373,8 +371,6 @@ def create_or_update_table(table_name: str, columns: List[Dict[str, str]], s3_lo
     Raises:
         GlueAPIError: If Glue API calls fail
     """
-    from botocore.exceptions import ClientError
-    
     table_input = build_table_input(table_name, columns, s3_location)
     
     try:
@@ -471,24 +467,6 @@ def create_or_update_table(table_name: str, columns: List[Dict[str, str]], s3_lo
         logger.error(f"Glue API error checking table {table_name}: {error_code}")
         raise GlueAPIError(f"Failed to check table existence: {error_code}") from e
 
-def get_file_size(bucket: str, key: str) -> int:
-    """
-    Get the size of an S3 object in bytes.
-    
-    Args:
-        bucket: S3 bucket name
-        key: S3 object key
-        
-    Returns:
-        File size in bytes, or 0 if error
-    """
-    try:
-        response = s3_client.head_object(Bucket=bucket, Key=key)
-        return response['ContentLength']
-    except Exception as e:
-        logger.warning(f"Could not get file size for s3://{bucket}/{key}: {e}")
-        return 0
-
 
 def detect_schema_changes(existing_columns: List[Dict[str, str]], new_columns: List[Dict[str, str]]) -> Dict[str, Any]:
     """
@@ -529,6 +507,7 @@ def detect_schema_changes(existing_columns: List[Dict[str, str]], new_columns: L
         'type_changes': type_changes
     }
 
+
 def lambda_handler(event, context):
     """
     Lambda handler triggered by S3 PUT events for Parquet files.
@@ -541,7 +520,6 @@ def lambda_handler(event, context):
         Response with status code and processing results
     """
     logger.info(f"Received event: {json.dumps(event)}")
-    
     results = []
     try:
         for record in event['Records']:
@@ -576,10 +554,9 @@ def lambda_handler(event, context):
                 # Generate table name
                 table_name = generate_table_name(dataset_id)
                 
-                # Create or update Glue table (legacy non-partitioned)
+                # Create or update Glue table
                 dataset_folder = '/'.join(key.split('/')[:-1]) + '/'
                 s3_location = f"s3://{bucket}/{dataset_folder}"
-                
                 table_result = create_or_update_table(table_name, columns, s3_location)
                 
                 results.append({
