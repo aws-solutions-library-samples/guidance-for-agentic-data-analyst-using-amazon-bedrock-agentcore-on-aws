@@ -3,7 +3,9 @@ from aws_data_analyst.python_environment import PythonInterpreter
 
 
 CODE_PREAMBLE = """
+import pandas as pd
 from aws_data_analyst.datasets import LocalQueryHandler
+
 query_handler = LocalQueryHandler()
 """
 
