@@ -39,8 +39,7 @@
         "query": "What is the current CPI index for car sales?",
         "datasets": [
             "cpih01"
-        ],
-        "answer": "The current CPI index values for car sales as of September 2025 are:\n- **New motor cars**: 139.5\n- **Second-hand motor cars**: 112.6"
+        ]
     },
     {
         "query": "How many 30 year-olds live in Blaenau Gwent?",
@@ -53,8 +52,7 @@
         "query": "How many people aged 90 or over live in England and Wales in total?",
         "datasets": [
             "mid-year-pop-est"
-        ],
-        "answer": "551758"
+        ]
     },
     {
         "query": "How many people aged 100 or over died last week?",
