@@ -23,19 +23,13 @@ from rich.console import Console
 from rich.table import Table
 from print_color import print
 
-from aws_data_analyst.evaluation import TESTS_PATH
 from aws_data_analyst.data_analyst_agent_client import AgentCoreClient
 from aws_data_analyst.bedrock_models import MODELS
 from aws_data_analyst.evaluation.llm_as_a_judge import ONS_Evaluator
+from aws_data_analyst.evaluation.load_tests import load_tests
 
 
 PARALLEL_JOBS = 10
-
-
-def load_tests():
-    for test in json.load(TESTS_PATH.open()):
-        if 'answer' in test or 'supported_by_data' in test:
-            yield test
 
 
 def run_test(model, test):
@@ -45,20 +39,10 @@ def run_test(model, test):
     query = test['query']
     agent_response = agent.answer(query)
 
-    if 'supported_by_data' in test and not test['supported_by_data']:
-        # Question not supported by ONS data
-        if agent_response['supported_by_data']:
-            score = 0
-            rationale = "The Agent did not flag the absence of ONS data."
-        else:
-            score = 1
-            rationale = "The Agent did flag the absence of ONS data."
-
-    else:
-        # Question supported by ONS data
-        eval_response = evaluator.evaluate(query, test['answer'], agent_response['answer'])
-        score = eval_response['score']
-        rationale = eval_response['rationale']
+    # Question supported by ONS data
+    eval_response = evaluator.evaluate(query, test['answer'], agent_response['answer'])
+    score = eval_response['score']
+    rationale = eval_response['rationale']
 
     return {
         'model_id': model,

@@ -8,7 +8,7 @@ from aws_data_analyst.datasets_db import DatasetsDB
 from aws_data_analyst.data_analyst_agent import DATASET_RETRIEVAL_TOPK
 from aws_data_analyst.datasets import load_dataset_metadata
 from aws_data_analyst.index_datasets import index_datasets
-from aws_data_analyst.evaluation import TESTS_PATH
+from aws_data_analyst.evaluation import QUERIES_PATH
 
 
 
@@ -25,7 +25,7 @@ def evaluate_retrieval(embedder, index, verbose=True):
 
     db = DatasetsDB(embedder_id=embedder)
     rr_scores, recall_scores, search_latency = [], [], []
-    for test in tqdm(json.load(TESTS_PATH.open())):
+    for test in tqdm(json.load(QUERIES_PATH.open())):
         result = db.search_entries(test["query"], topK=DATASET_RETRIEVAL_TOPK)
         datasets = [entry["key"] for entry in result['entries']]
         rr_score = rr(test["datasets"], datasets)
