@@ -3,36 +3,31 @@
         "query": "how many people live in cambridge",
         "datasets": [
             "mid-year-pop-est"
-        ],
-        "answer": "149,963"
+        ]
     },
     {
         "query": "How many 16-24 year-olds are unemployed?",
         "datasets": [
             "labour-market"
-        ],
-        "answer": "571,345"
+        ]
     },
     {
         "query": "What percentage of those aged 65 or over are in work?",
         "datasets": [
             "labour-market"
-        ],
-        "answer": "12.85"
+        ]
     },
     {
         "query": "What is the latest monthly GDP estimate?",
         "datasets": [
             "gdp-to-four-decimal-places"
-        ],
-        "answer": "102.5002"
+        ]
     },
     {
         "query": "What is the latest monthly GDP estimate for the education sector?",
         "datasets": [
             "gdp-to-four-decimal-places"
-        ],
-        "answer": "101.3957"
+        ]
     },
     {
         "query": "What is inflation for December?",

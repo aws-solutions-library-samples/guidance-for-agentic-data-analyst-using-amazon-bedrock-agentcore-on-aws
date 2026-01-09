@@ -28,6 +28,7 @@ def load_tests():
         answer = exec_tool(script)
 
         yield {
+            'id': dir_path.name,
             'query': question,
             'answer': answer,
         }

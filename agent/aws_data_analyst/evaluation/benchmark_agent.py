@@ -33,24 +33,35 @@ PARALLEL_JOBS = 10
 
 
 def run_test(model, test):
-    agent = AgentCoreClient(model)
-    evaluator = ONS_Evaluator()
+    try:
+        agent = AgentCoreClient(model)
+        evaluator = ONS_Evaluator()
 
-    query = test['query']
-    agent_response = agent.answer(query)
+        query = test['query']
+        agent_response = agent.answer(query)
 
-    # Question supported by ONS data
-    eval_response = evaluator.evaluate(query, test['answer'], agent_response['answer'])
-    score = eval_response['score']
-    rationale = eval_response['rationale']
+        # Question supported by ONS data
+        eval_response = evaluator.evaluate(query, test['answer'], agent_response['answer'])
+        score = eval_response['score']
+        rationale = eval_response['rationale']
 
-    return {
-        'model_id': model,
-        'test': test,
-        'agent_response': agent_response,
-        'score': score,
-        'rationale': rationale
-    }
+        return {
+            'model_id': model,
+            'test': test,
+            'agent_response': agent_response,
+            'score': score,
+            'rationale': rationale
+        }
+    except Exception as e:
+        msg = f"Error running test {test['id']}: {e}"
+        print(msg, color='red')
+        return {
+            'model_id': model,
+            'test': test,
+            'agent_response': None,
+            'score': 0,
+            'rationale': msg
+        }
 
 
 def test_expectation(test):
