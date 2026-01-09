@@ -74,10 +74,6 @@ def select_field(fields):
     return b, a
 
 
-def normalize_dimension_name(name):
-    return name.lower().replace(' ', '').replace('_', '').replace('-', '')
-
-
 def get_csv_header(file_path):
     with open(file_path, 'r') as f:
         header = f.readline().strip()
@@ -157,36 +153,6 @@ def preprocess_dataset(dataset):
     # Save the dataset information
     json.dump(dataset_information, open(dataset_path, 'w'), indent=4)
     
-    # Generate mapping file
-    mappings = {}    
-    for dim_name, data in dimensions.items():
-        label_field = data['field']
-        code_field = data['code_field']
-
-        # Extract unique code-label pairs using pandas vectorized operations
-        dim_df = df[[code_field, label_field]].copy()
-        
-        # Apply vectorized string trimming
-        dim_df[code_field] = dim_df[code_field].str.strip()
-        dim_df[label_field] = dim_df[label_field].str.strip()
-        
-        # Filter out empty/null values
-        dim_df = dim_df[
-            (dim_df[code_field].notna()) & (dim_df[code_field] != '') &
-            (dim_df[label_field].notna()) & (dim_df[label_field] != '')
-        ]
-        
-        # Remove duplicates efficiently
-        dim_df = dim_df.drop_duplicates()
-        
-        # Convert to dictionary using pandas pattern
-        code_to_label = dim_df.set_index(code_field)[label_field].to_dict()
-        
-        # Normalize dimension name to API format
-        api_dim_name = normalize_dimension_name(dim_name)
-        mappings[api_dim_name] = code_to_label
-    json.dump(mappings, open(mapping_path, 'w'), indent=4)
-
     # Save the dataset to parquet
     df = df[list(columns)]
 
