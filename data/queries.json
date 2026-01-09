@@ -58,15 +58,13 @@
         "query": "How many people aged 100 or over died last week?",
         "datasets": [
             "weekly-deaths-age-sex"
-        ],
-        "answer": "32 people aged 100 or over died in Week 47 of 2025 in England and Wales. This comprised 29 deaths in England and 3 deaths in Wales."
+        ]
     },
     {
         "query": "How many 72 year olds died in London last week?",
         "datasets": [
             "weekly-deaths-age-sex"
-        ],
-        "answer": "The ONS does not publish weekly death statistics broken down by single year of age (72 years). However, the closest available data shows that in Week 47, 2025, there were 31 deaths of people aged 70-74 in London."
+        ]
     },
     {
         "query": "how many people live in the uk",
