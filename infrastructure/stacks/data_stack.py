@@ -270,14 +270,12 @@ class DataStack(Stack):
             layer_version_arn=f"arn:aws:lambda:{self.region}:336392948345:layer:AWSSDKPandas-Python313:5"
         )
 
-        parser_lambda_dir = lambda_dir / "parse_dataset"
-        
         glue_table_creator = lambda_.Function(
             self, "GlueTableCreatorFunction",
             runtime=lambda_.Runtime.PYTHON_3_13,
             handler="create_glue_table.lambda_handler",
             code=lambda_.Code.from_asset(
-                str(parser_lambda_dir),
+                str(lambda_dir / "parse_dataset"),
                 exclude=["requirements.txt", "__pycache__"]
             ),
             role=lambda_role,
@@ -298,5 +296,76 @@ class DataStack(Stack):
             s3.NotificationKeyFilter(
                 prefix="datasets/",
                 suffix=".parquet"
+            )
+        )
+
+        # IAM role for Vector DB Lambda indexer
+        vector_db_lambda_role = iam.Role(
+            self, "VectorDB_IndexerLambdaRole",
+            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+            managed_policies=[
+                iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole")
+            ],
+            description="Execution role for Vector DB indexer Lambda function"
+        )
+        # Grant Lambda permissions to read from S3
+        self.athena_data_bucket.grant_read(vector_db_lambda_role)
+
+        # Grant Lambda permissions to index dataset
+        vector_db_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "s3vectors:QueryVectors", 
+                    "s3vectors:GetVectors",
+                    "s3vectors:CreateIndex",
+                    "s3vectors:GetIndex",
+                    "s3vectors:ListIndexes",
+                    "s3vectors:PutVectors"
+                ],
+                resources=[
+                    f"arn:aws:s3vectors:{self.region}:{self.account}:bucket/{self.dataset_embeddings.vector_bucket_name}/index/*"
+                ]
+            ),
+        )
+
+        # Grant Lambda permissions to invoke Bedrock embedding models
+        vector_db_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                sid="BedrockModelInvocation",
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream"
+                ],
+                resources=[
+                    "arn:aws:bedrock:*::foundation-model/*",
+                    f"arn:aws:bedrock:{self.region}:{self.account}:*"
+                ]
+            )
+        )
+
+        vector_db_indexer = lambda_.Function(
+            self, "VectorDB_IndexerFunction",
+            runtime=lambda_.Runtime.PYTHON_3_13,
+            handler="indexer.lambda_handler",
+            code=lambda_.Code.from_asset(
+                str(lambda_dir / "indexer_dataset"),
+                exclude=["requirements.txt", "__pycache__"]
+            ),
+            role=vector_db_lambda_role,
+            environment={
+                "BUCKET_NAME": self.athena_data_bucket.bucket_name
+            },
+            description="Automatically index datasets when new metadata files are uploaded"
+        )
+        
+        # S3 event notification to trigger Lambda for .parquet files in datasets/ prefix
+        self.athena_data_bucket.add_event_notification(
+            s3.EventType.OBJECT_CREATED,
+            s3n.LambdaDestination(vector_db_indexer),
+            s3.NotificationKeyFilter(
+                prefix="metadata/",
+                suffix=".json"
             )
         )

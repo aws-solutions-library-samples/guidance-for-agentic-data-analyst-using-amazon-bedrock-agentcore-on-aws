@@ -82,46 +82,10 @@ def extract_dataset_id(s3_key: str) -> Optional[str]:
         Dataset ID or None if pattern doesn't match
     """
     # Pattern: datasets/{dataset_id}/data.parquet
-    match = re.match(r'^datasets/([^/]+)/[^/]+\.parquet$', s3_key)
+    match = re.match(r'^datasets/([^/]+)/data\.parquet$', s3_key)
     if match:
         return match.group(1)
     return None
-
-
-def extract_dataset_id_and_version(s3_key: str) -> tuple[Optional[str], Optional[int]]:
-    """
-    Extract dataset_id and version from S3 key path.
-    
-    Expected format: datasets/{dataset-id}/{version}/data.parquet
-    Example: datasets/ageing-population-estimates/4/data.parquet → ('ageing-population-estimates', 4)
-    
-    Args:
-        s3_key: S3 object key
-        
-    Returns:
-        Tuple of (dataset_id, version) or (None, None) if pattern doesn't match
-    """
-    # Pattern: datasets/{dataset_id}/{version}/data.parquet
-    match = re.match(r'^datasets/([^/]+)/(\d+)/[^/]+\.parquet$', s3_key)
-    if match:
-        dataset_id = match.group(1)
-        version_str = match.group(2)
-        
-        try:
-            version = int(version_str)
-            
-            if version < 1 or version > 999:
-                logger.error(f"[VERSION ERROR] Version {version} out of valid range (1-999) for dataset '{dataset_id}' in key: {s3_key}")
-                return None, None
-            
-            logger.info(f"[VERSION] Extracted dataset_id='{dataset_id}', version={version} from {s3_key}")
-            return dataset_id, version
-            
-        except ValueError as e:
-            logger.error(f"[VERSION ERROR] Invalid version number in key {s3_key}: {e}")
-            return None, None
-    
-    return None, None
 
 
 def validate_parquet_file(s3_key: str) -> bool:
@@ -576,11 +540,9 @@ def lambda_handler(event, context):
     Returns:
         Response with status code and processing results
     """
-    request_id = context.aws_request_id if context else 'unknown'
     logger.info(f"Received event: {json.dumps(event)}")
     
     results = []
-    
     try:
         for record in event['Records']:
             dataset_id = None
@@ -595,106 +557,38 @@ def lambda_handler(event, context):
                     logger.warning(f"Skipping non-Parquet file: {key}")
                     continue
                 
-                # Try to extract dataset_id and version from versioned path
-                dataset_id, version = extract_dataset_id_and_version(key)
-                
-                if dataset_id and version:
-                    # Versioned path detected
-                    logger.info(f"Processing versioned dataset: {dataset_id} version {version}")
-                    
-                    # Extract Parquet schema
-                    columns = extract_parquet_schema(bucket, key)
-                    logger.info(f"Extracted {len(columns)} columns from Parquet schema")
-                    
-                    # Get file size
-                    file_size = get_file_size(bucket, key)
-                    
-                    # Generate table name
-                    table_name = generate_table_name(dataset_id)
-                    
-                    # Full S3 location for this version
-                    version_s3_location = f"s3://{bucket}/{key}"
-                    
-                    # Check if table exists
-                    try:
-                        existing_table = glue_client.get_table(DatabaseName=DATABASE_NAME, Name=table_name)
-                        
-                        # Table exists with partition projection - no action needed
-                        # Partition projection automatically discovers versions 1-999
-                        logger.info(f"Table {table_name} exists with partition projection enabled")
-                        logger.info(f"Version {version} will be automatically discovered by Athena (no partition registration needed)")
-                        
-                        results.append({
-                            'status': 'success',
-                            'dataset_id': dataset_id,
-                            'version': version,
-                            'table_name': table_name,
-                            'operation': 'no_action_needed',
-                            'reason': 'partition_projection_enabled'
-                        })
-                        
-                        logger.info(f"Successfully processed {dataset_id} v{version}: table exists, partition projection handles discovery")
-                        
-                    except glue_client.exceptions.EntityNotFoundException:
-                        # Table doesn't exist - create it with partition projection
-                        logger.info(f"Table {table_name} does not exist, creating with partition projection")
-                        
-                        dataset_root = f"datasets/{dataset_id}/"
-                        s3_location = f"s3://{bucket}/{dataset_root}"
-                        
-                        partition_keys = [{'Name': 'version', 'Type': 'int', 'Comment': 'Dataset version number'}]
-                        
-                        table_input = build_partitioned_table_input(table_name, columns, s3_location, partition_keys)
-                        
-                        glue_client.create_table(DatabaseName=DATABASE_NAME, TableInput=table_input)
-                        logger.info(f"Successfully created partitioned table {table_name} with partition projection")
-                        logger.info(f"Partition projection enabled for versions 1-999 (no manual partition registration needed)")
-                        
-                        results.append({
-                            'status': 'success',
-                            'dataset_id': dataset_id,
-                            'version': version,
-                            'table_name': table_name,
-                            'operation': 'created_with_projection',
-                            'projection_range': '1-999'
-                        })
-                        
-                        logger.info(f"Successfully created table {table_name} with partition projection for versions 1-999")
-                    
-                else:
-                    # Fall back to legacy non-versioned path
-                    dataset_id = extract_dataset_id(key)
-                    if not dataset_id:
-                        logger.warning(f"Could not extract dataset_id from key: {key}")
-                        results.append({
-                            'status': 'skipped',
-                            'reason': 'invalid_path',
-                            's3_key': key
-                        })
-                        continue
-                    
-                    logger.info(f"Processing legacy non-versioned dataset: {dataset_id}")
-                    
-                    # Extract Parquet schema
-                    columns = extract_parquet_schema(bucket, key)
-                    logger.info(f"Extracted {len(columns)} columns from Parquet schema")
-                    
-                    # Generate table name
-                    table_name = generate_table_name(dataset_id)
-                    
-                    # Create or update Glue table (legacy non-partitioned)
-                    dataset_folder = '/'.join(key.split('/')[:-1]) + '/'
-                    s3_location = f"s3://{bucket}/{dataset_folder}"
-                    
-                    table_result = create_or_update_table(table_name, columns, s3_location)
-                    
+                # Fall back to legacy non-versioned path
+                dataset_id = extract_dataset_id(key)
+                if not dataset_id:
+                    logger.warning(f"Could not extract dataset_id from key: {key}")
                     results.append({
-                        'status': 'success',
-                        'dataset_id': dataset_id,
-                        **table_result
+                        'status': 'skipped',
+                        'reason': 'invalid_path',
+                        's3_key': key
                     })
-                    
-                    logger.info(f"Successfully processed {dataset_id} -> {table_name}: {table_result['operation']}")
+                    continue
+                logger.info(f"Processing dataset: {dataset_id}")
+                
+                # Extract Parquet schema
+                columns = extract_parquet_schema(bucket, key)
+                logger.info(f"Extracted {len(columns)} columns from Parquet schema")
+                
+                # Generate table name
+                table_name = generate_table_name(dataset_id)
+                
+                # Create or update Glue table (legacy non-partitioned)
+                dataset_folder = '/'.join(key.split('/')[:-1]) + '/'
+                s3_location = f"s3://{bucket}/{dataset_folder}"
+                
+                table_result = create_or_update_table(table_name, columns, s3_location)
+                
+                results.append({
+                    'status': 'success',
+                    'dataset_id': dataset_id,
+                    **table_result
+                })
+                
+                logger.info(f"Successfully processed {dataset_id} -> {table_name}: {table_result['operation']}")
                 
             except S3AccessError as e:
                 error_msg = f"S3 access error for dataset_id={dataset_id}, s3://{bucket}/{key}: {str(e)}"
