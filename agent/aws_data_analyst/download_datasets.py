@@ -85,6 +85,14 @@ def get_dataset_metadata(latest_version_href):
         return dataset_metadata
 
 
+def data_exists(data_path, metdata):
+    if data_path.exists():
+        csv_size = int(metdata['latest_version_metadata']['downloads']['csv']['size'])
+        if path.getsize(data_path) == csv_size:
+            return True
+    return False
+
+
 def ons_download_dataset(dataset):
     dataset_dir = DATASETS_DIR / dataset['id']
     makedirs(dataset_dir, exist_ok=True)
@@ -96,8 +104,7 @@ def ons_download_dataset(dataset):
 
     if current_metadata is not None:
         if current_metadata['latest_version_metadata']['downloads']['csv']['href'] == dataset_metadata['downloads']['csv']['href']:
-            csv_size = int(current_metadata['latest_version_metadata']['downloads']['csv']['size'])
-            if path.getsize(data_path) and path.getsize(data_path) == csv_size:
+            if data_exists(data_path, current_metadata):
                 print("\tAlready latest version")
                 return
     
@@ -105,7 +112,8 @@ def ons_download_dataset(dataset):
     metadata['latest_version_metadata'] = dataset_metadata
     json.dump(metadata, open(metadata_path, 'w'), indent=4)
 
-    download_file(dataset_metadata['downloads']['csv']['href'], data_path)
+    if not data_exists(data_path, metadata):
+        download_file(dataset_metadata['downloads']['csv']['href'], data_path)
 
 
 def ons_download_datasets():

@@ -100,8 +100,15 @@ def preprocess_dataset(dataset):
     observation = find_observation(headers)
     headers.remove(observation)
 
+    # Load Data dropping rows with NaN in the Observation field
+    # We do this chunk by chunk, to limit the memory requirement
+    chunk_size = 100000  # Adjust based on your memory
     dtype={column: "string" for column in headers}
-    df = pd.read_csv(dataset['data'], dtype=dtype, on_bad_lines='skip')
+    chunks = []
+    for chunk in pd.read_csv(dataset['data'], dtype=dtype, chunksize=chunk_size, on_bad_lines='skip'):
+        chunk = chunk.dropna(subset=[observation]).copy()     
+        chunks.append(chunk)
+    df = pd.concat(chunks, ignore_index=True)
 
     df = df.rename(columns={observation: 'observation'})
     obs_min, obs_max =  df['observation'].agg(['min', 'max'])
@@ -153,7 +160,7 @@ def preprocess_dataset(dataset):
     # Save the dataset information
     json.dump(dataset_information, open(dataset_path, 'w'), indent=4)
     
-    # Save the dataset to parquet
+    # Keep only the selected columns 
     df = df[list(columns)]
 
     # Rename the columns to the dimension names
@@ -162,6 +169,7 @@ def preprocess_dataset(dataset):
         column_map[data['field']] = dim_name
     df = df.rename(columns=column_map)
 
+    # Save to parquet format
     df.to_parquet(parquet_path)
 
 
