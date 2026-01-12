@@ -89,9 +89,8 @@ def preprocess_dataset(dataset):
     # Generated files
     dataset_dir = path.dirname(dataset['data'])
     dataset_path = path.join(dataset_dir, "dataset.json")
-    mapping_path = path.join(dataset_dir, "mapping.json")
     parquet_path = path.join(dataset_dir, "data.parquet")
-    if all(map(path.exists, [dataset_path, mapping_path, parquet_path])):
+    if all(map(path.exists, [dataset_path, parquet_path])):
         dataset_information = json.load(open(dataset_path))
         if 'version' in dataset_information and dataset_information['version'] == metadata['latest_version_metadata']['version']:
             return

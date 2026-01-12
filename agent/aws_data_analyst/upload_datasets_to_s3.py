@@ -35,12 +35,12 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
     Returns:
         UploadStatus
     """
-    logger.info(f"  Upload {local_file.name} to s3://{S3_DATA_BUCKET}/{s3_key}")
+    upload_description = f"Upload {local_file.name} to s3://{S3_DATA_BUCKET}/{s3_key}"
     try:
         # Check if file already exists
         try:
             s3_client.head_object(Bucket=S3_DATA_BUCKET, Key=s3_key)
-            logger.info("    Skipped")
+            logger.info(f"  SKIPPED {upload_description}")
             return UploadStatus.SKIPPED
         except ClientError as e:
             if e.response['Error']['Code'] != '404':
@@ -54,7 +54,7 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
             s3_key,
             ExtraArgs={'ContentType': content_type}
         )
-        logger.info("    Success")
+        logger.info(f"  SUCCESSFUL {upload_description}")
         return UploadStatus.UPLOADED
         
     except ClientError as e:
