@@ -1,20 +1,17 @@
 # Data Analyst Agent using Hundreds of Datasets on Amazon Athena
 
-This guidance presents an approach to run a Data Analyst Agent targeting hundreds of datasets hosted on Amazon Athena. The Agent discovers the datasets relevant to a given query using a semantic search on Amazon S3 Vectors.
-
 ## Table of Contents
 
 - [Data Analyst Agent using Hundreds of Datasets on Amazon Athena](#data-analyst-agent-using-hundreds-of-datasets-on-amazon-athena)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
-    - [Architecture](#architecture)
     - [Cost](#cost)
     - [Sample Cost Table](#sample-cost-table)
   - [Prerequisites](#prerequisites)
     - [Operating System](#operating-system)
     - [aws cdk bootstrap](#aws-cdk-bootstrap)
-  - [Deployment Steps (required)](#deployment-steps-required)
-  - [Deployment Validation  (required)](#deployment-validation--required)
+  - [Deployment Steps](#deployment-steps)
+  - [Deployment Validation](#deployment-validation)
   - [Running the Guidance](#running-the-guidance)
   - [Next Steps](#next-steps)
   - [Cleanup](#cleanup)
@@ -22,16 +19,16 @@ This guidance presents an approach to run a Data Analyst Agent targeting hundred
   - [Authors](#authors)
 
 ## Overview
+Organizations often manage hundreds of datasets across their data lakes, making it difficult for analysts to discover which datasets contain the information they need. Traditional keyword-based search falls short when users don't know the exact terminology or structure of available data. This creates a bottleneck where valuable data remains underutilized simply because it's hard to find.
 
-1. Provide a brief overview explaining the what, why, or how of your Guidance. You can answer any one of the following to help you write this:
+This guidance provides a scalable approach for deploying a Data Analyst Agent that can query hundreds of datasets hosted on Amazon Athena. By leveraging semantic search powered by Amazon S3 Vectors, the agent automatically identifies and retrieves the most relevant datasets based on user queries.
 
-    - **Why did you build this Guidance?**
-    - **What problem does this Guidance solve?**
+For each new dataset added to the system, the admin must upload two files:
+1. A Parquet file with the raw data, which initialises the corresponding Athena table.
+2. A JSON metadata file with a dataset description, which creates a vector database entry enabling semantic discovery by the agent.
+3. 
+To showcase the solution's ability to handle hundreds of datasets, this guidance includes a ready-to-use script that downloads all `337` publicly available datasets from the UK Office for National Statistics (ONS) and generates the corresponding Parquet data and JSON metadata files, ready to be uploaded.
 
-2. Include the architecture diagram image, as well as the steps explaining the high-level overview and flow of the architecture. 
-    - To add a screenshot, create an ‘assets/images’ folder in your repository and upload your screenshot to it. Then, using the relative file path, add it to your README. 
-
-### Architecture
 ![Reference Architecture Diagram](./data/media/architecture_diagram.drawio.png)
 
 ### Cost
@@ -76,29 +73,11 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 **Example blurb:** “This Guidance uses aws-cdk. If you are using aws-cdk for first time, please perform the below bootstrapping....”
 
-## Deployment Steps (required)
+## Deployment Steps
+1. Install packages in requirements using command ```pip install requirement.txt```
+2. Run this command to deploy the stack ```cdk deploy``` 
 
-Deployment steps must be numbered, comprehensive, and usable to customers at any level of AWS expertise. The steps must include the precise commands to run, and describe the action it performs.
-
-* All steps must be numbered.
-* If the step requires manual actions from the AWS console, include a screenshot if possible.
-* The steps must start with the following command to clone the repo. ```git clone xxxxxxx```
-* If applicable, provide instructions to create the Python virtual environment, and installing the packages using ```requirement.txt```.
-* If applicable, provide instructions to capture the deployed resource ARN or ID using the CLI command (recommended), or console action.
-
- 
-**Example:**
-
-1. Clone the repo using command ```git clone xxxxxxxxxx```
-2. cd to the repo folder ```cd <repo-name>```
-3. Install packages in requirements using command ```pip install requirement.txt```
-4. Edit content of **file-name** and replace **s3-bucket** with the bucket name in your account.
-5. Run this command to deploy the stack ```cdk deploy``` 
-6. Capture the domain name created by running this CLI command ```aws apigateway ............```
-
-
-
-## Deployment Validation  (required)
+## Deployment Validation
 
 <Provide steps to validate a successful deployment, such as terminal output, verifying that the resource is created, status of the CloudFormation template, etc.>
 
