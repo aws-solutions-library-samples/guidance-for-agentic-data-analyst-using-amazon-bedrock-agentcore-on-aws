@@ -75,10 +75,11 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 ## Deployment Steps
 1. Install packages in requirements using command ```pip install requirement.txt```
-2. Run this command to deploy the stack ```cdk deploy``` 
-3. Download the `337` ONS datasets: ```python aws_data_analyst/download_datasets.py```
-4. Preprocess the datasets: ```python aws_data_analyst/preprocess_datasets.py```
-5. Upload the datasets to S3: ```python aws_data_analyst/upload_datasets_to_s3.py```
+2. From the `infrastructure` directory, deploy the stack with the CDK command: ```cdk deploy``` 
+3. From the `agent` directory, run the scripts to deploy the the `337` ONS datasets:
+   1. Download the datasets: ```python aws_data_analyst/download_datasets.py```
+   2. Preprocess the datasets: ```python aws_data_analyst/preprocess_datasets.py```
+   3. Upload the datasets to S3: ```python aws_data_analyst/upload_datasets_to_s3.py```
 
 ## Deployment Validation
 
