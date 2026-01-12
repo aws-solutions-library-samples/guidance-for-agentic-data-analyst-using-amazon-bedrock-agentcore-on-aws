@@ -18,7 +18,41 @@ from pathlib import Path
 import cdk_s3_vectors as s3_vectors
 
 
+DEFAULT_EMBEDDER = "nova"
 EMBEDDING_DIMENSION = 1024
+
+
+def construct_vector_db(stack, postfix=""):
+    id_postfix = postfix.title()
+    name_postfix = f"-{postfix.lower()}" if postfix else ""
+
+    dataset_embeddings = s3_vectors.Bucket(
+        stack, "DatasetEmbeddings" + id_postfix,
+        vector_bucket_name="dataset-embeddings" + name_postfix,
+    )
+
+    dataset_embeddings_index = s3_vectors.Index(
+        stack, "DatasetEmbeddingsIndex" + id_postfix,
+        vector_bucket_name=dataset_embeddings.vector_bucket_name,
+        index_name="dataset-embeddings-index" + name_postfix,
+        data_type="float32",
+        dimension=EMBEDDING_DIMENSION,
+        distance_metric="cosine",
+    )
+    dataset_embeddings_index.node.add_dependency(dataset_embeddings)
+    
+    ssm.StringParameter(
+        stack, "VectorDB_Bucket" + name_postfix,
+        parameter_name="/data-analyst/vectordb_bucket" + name_postfix,
+        string_value=dataset_embeddings.vector_bucket_name
+    )
+    ssm.StringParameter(
+        stack, "VectorDB_Index" + name_postfix,
+        parameter_name="/data-analyst/vectordb_index" + name_postfix,
+        string_value=dataset_embeddings_index.index_name
+    )
+
+    return dataset_embeddings
 
 
 class DataStack(Stack):
@@ -30,19 +64,26 @@ class DataStack(Stack):
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        self.dataset_embeddings = s3_vectors.Bucket(
-            self, "DatasetEmbeddings",
-            vector_bucket_name="dataset-embeddings",
+        # Parameters of the embeddings.
+        # They have to be consistent across: index creation and runtime search
+        self.embedder = DEFAULT_EMBEDDER
+        ssm.StringParameter(
+            self, "VectorDB_EmbedderParam",
+            parameter_name="/data-analyst/vectordb_embedder",
+            string_value=self.embedder
         )
-        dataset_embeddings_index = s3_vectors.Index(
-            self, "DatasetEmbeddingsIndex",
-            vector_bucket_name=self.dataset_embeddings.vector_bucket_name,
-            index_name="dataset-embeddings-index",
-            data_type="float32",
-            dimension=EMBEDDING_DIMENSION,
-            distance_metric="cosine",
+        self.embedding_dimension = str(EMBEDDING_DIMENSION)
+        ssm.StringParameter(
+            self, "VectorDB_DimensionParam",
+            parameter_name="/data-analyst/vectordb_dimension",
+            string_value=self.embedding_dimension
         )
-        dataset_embeddings_index.node.add_dependency(self.dataset_embeddings)
+
+        # Prod DB
+        self.dataset_embeddings = construct_vector_db(self)
+
+        # Dev DB for experiments
+        construct_vector_db(self, 'dev')
 
         # S3 bucket for parquet files
         self.athena_data_bucket = s3.Bucket(
@@ -344,7 +385,18 @@ class DataStack(Stack):
                 ]
             )
         )
-
+        vector_db_lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "ssm:GetParameter", 
+                    "ssm:GetParameters"
+                ],
+                resources=[
+                    f"arn:aws:ssm:{self.region}:{self.account}:parameter/data-analyst/*"
+                ]
+            )
+        )
         vector_db_indexer = lambda_.Function(
             self, "VectorDB_IndexerFunction",
             runtime=lambda_.Runtime.PYTHON_3_13,

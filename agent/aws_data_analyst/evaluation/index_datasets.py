@@ -4,10 +4,13 @@ from tqdm import tqdm
 
 from aws_data_analyst.datasets import iterate_datasets, load_description
 from aws_data_analyst.datasets_db import DatasetsDB
+from aws_data_analyst.infrastructure import get_vectordb_configuration
 
 
 def index_datasets(embedder):
-    db = DatasetsDB(embedder_id=embedder)
+    conf = get_vectordb_configuration(dev=True)
+    conf['embedder_id'] = embedder
+    db = DatasetsDB(conf)
     for dataset in tqdm(list(iterate_datasets())):
         embedding_times = []
         description = load_description(dataset['id'])

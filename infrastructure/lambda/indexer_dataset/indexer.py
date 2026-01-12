@@ -14,7 +14,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 s3_client = boto3.client('s3')
-db = DatasetsDB(embedder_id="nova")
+db = DatasetsDB()
 
 
 class S3AccessError(Exception):

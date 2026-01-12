@@ -7,9 +7,9 @@ from irmetrics.topk import rr, recall
 from aws_data_analyst.datasets_db import DatasetsDB
 from aws_data_analyst.data_analyst_agent import DATASET_RETRIEVAL_TOPK
 from aws_data_analyst.datasets import load_dataset_metadata
-from aws_data_analyst.index_datasets import index_datasets
+from aws_data_analyst.evaluation.index_datasets import index_datasets
 from aws_data_analyst.evaluation import QUERIES_PATH
-
+from aws_data_analyst.infrastructure import get_vectordb_configuration
 
 
 def print_dataset(dataset):
@@ -23,7 +23,9 @@ def evaluate_retrieval(embedder, index, verbose=True):
     if index:
         results['embedding_tp50'] = index_datasets(embedder)
 
-    db = DatasetsDB(embedder_id=embedder)
+    conf = get_vectordb_configuration(dev=True)
+    conf['embedder_id'] = embedder
+    db = DatasetsDB(conf)
     rr_scores, recall_scores, search_latency = [], [], []
     for test in tqdm(json.load(QUERIES_PATH.open())):
         result = db.search_entries(test["query"], topK=DATASET_RETRIEVAL_TOPK)
