@@ -12,7 +12,6 @@ Expected Agent Interface:
         }
     }
 """
-import json
 import statistics
 from collections import defaultdict
 
@@ -25,7 +24,7 @@ from print_color import print
 
 from aws_data_analyst.data_analyst_agent_client import AgentCoreClient
 from aws_data_analyst.bedrock_models import MODELS
-from aws_data_analyst.evaluation.llm_as_a_judge import ONS_Evaluator
+from aws_data_analyst.evaluation.llm_as_a_judge import DataAnalyst_Evaluator
 from aws_data_analyst.evaluation.load_tests import load_tests
 
 
@@ -35,7 +34,7 @@ PARALLEL_JOBS = 10
 def run_test(model, test):
     try:
         agent = AgentCoreClient(model)
-        evaluator = ONS_Evaluator()
+        evaluator = DataAnalyst_Evaluator()
 
         query = test['query']
         agent_response = agent.answer(query)
@@ -64,13 +63,6 @@ def run_test(model, test):
         }
 
 
-def test_expectation(test):
-    if 'supported_by_data' in test and not test['supported_by_data']:
-        return "Not supported by ONS data"
-    else:
-        return test['answer']
-    
-
 def benchmark_agent(models, verbose=False):
     tests = [(model, test) for test in load_tests() for model in models]
     with joblib_progress("Agent Benchmark", total=len(tests)):
@@ -87,7 +79,7 @@ def benchmark_agent(models, verbose=False):
         if verbose and result['score'] < 0.7:
             test = result['test']
             print(f"\nQuestion: {test['query']}", color='yellow')
-            print(f"Expected Answer: {test_expectation(test)}", color='yellow')
+            print(f"Expected Answer: {test['answer']}", color='yellow')
             print(f"Agent Response: {result['agent_response']['answer']}")
             print(f"Score [{result['score']:.0%}]: {result['rationale']}", color='red')
     
@@ -106,11 +98,9 @@ def benchmark_agent(models, verbose=False):
 
 
 if __name__ == '__main__':
-    import boto3
+    from aws_data_analyst.infrastructure import get_region_and_account_id
 
-    session = boto3.session.Session()
-    region = session.region_name
-    account_id = session.client('sts').get_caller_identity()['Account']
+    region, account_id = get_region_and_account_id()
     print(f"Using AWS Account: {account_id}. Region: {region}", color='yellow')
 
     from argparse import ArgumentParser

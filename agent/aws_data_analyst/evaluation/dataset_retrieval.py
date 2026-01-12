@@ -59,6 +59,7 @@ def evaluate_retrieval(embedder, index, verbose=True):
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
+    
     parser = ArgumentParser()
     parser.add_argument("--embedder", default="nova")
     parser.add_argument("--index", action="store_true")

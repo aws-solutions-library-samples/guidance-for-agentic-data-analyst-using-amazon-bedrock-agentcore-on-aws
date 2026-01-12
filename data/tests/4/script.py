@@ -1,3 +1,9 @@
+import pandas as pd
+
+from aws_data_analyst.cloud_datasets import CloudQueryHandler
+
+query_handler = CloudQueryHandler()
+
 df = query_handler.query_ons_dataset('gdp-to-four-decimal-places', {
     'unofficialstandardindustrialclassification': 'A-T : Monthly GDP'
 })

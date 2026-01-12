@@ -2,16 +2,8 @@ from aws_data_analyst.evaluation import TESTS_PATH
 from aws_data_analyst.python_environment import PythonInterpreter
 
 
-CODE_PREAMBLE = """
-import pandas as pd
-from aws_data_analyst.datasets import LocalQueryHandler
-
-query_handler = LocalQueryHandler()
-"""
-
-
 def load_tests():
-    interpreter = PythonInterpreter(CODE_PREAMBLE, stdout_label="")
+    interpreter = PythonInterpreter(stdout_label="")
     exec_tool = interpreter.get_tool()
 
     for dir_path in TESTS_PATH.iterdir():

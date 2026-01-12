@@ -8,3 +8,10 @@ S3_ATHENA_QUERY_RESULTS_BUCKET = ssm.get_parameter(Name='/data-analyst/athena-qu
 S3_ATHENA_QUERY_RESULTS = f"s3://{S3_ATHENA_QUERY_RESULTS_BUCKET}"
 
 AGENT_ARN = ssm.get_parameter(Name='/data-analyst/agent-runtime-arn')['Parameter']['Value']
+
+
+def get_region_and_account_id():
+    session = boto3.session.Session()
+    region = session.region_name
+    account_id = session.client('sts').get_caller_identity()['Account']
+    return region, account_id

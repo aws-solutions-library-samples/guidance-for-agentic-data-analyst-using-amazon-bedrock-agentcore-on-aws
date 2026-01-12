@@ -1,3 +1,9 @@
+import pandas as pd
+
+from aws_data_analyst.cloud_datasets import CloudQueryHandler
+
+query_handler = CloudQueryHandler()
+
 df = query_handler.query_ons_dataset('cpih01', {})
 
 df['date'] = pd.to_datetime(df['time'], format='%b-%y')

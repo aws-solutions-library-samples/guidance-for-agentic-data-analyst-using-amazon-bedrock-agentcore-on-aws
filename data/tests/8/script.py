@@ -1,3 +1,7 @@
+from aws_data_analyst.cloud_datasets import CloudQueryHandler
+
+query_handler = CloudQueryHandler()
+
 df = query_handler.query_ons_dataset('mid-year-pop-est', {
     'geography': 'Blaenau Gwent',
     'age': '30',
