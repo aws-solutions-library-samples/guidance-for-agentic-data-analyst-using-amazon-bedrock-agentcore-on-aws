@@ -76,6 +76,9 @@ The following table provides a sample cost breakdown for deploying this Guidance
 ## Deployment Steps
 1. Install packages in requirements using command ```pip install requirement.txt```
 2. Run this command to deploy the stack ```cdk deploy``` 
+3. Download the `337` ONS datasets: ```python aws_data_analyst/download_datasets.py```
+4. Preprocess the datasets: ```python aws_data_analyst/preprocess_datasets.py```
+5. Upload the datasets to S3: ```python aws_data_analyst/upload_datasets_to_s3.py```
 
 ## Deployment Validation
 
@@ -87,8 +90,6 @@ The following table provides a sample cost breakdown for deploying this Guidance
 * Open CloudFormation console and verify the status of the template with the name starting with xxxxxx.
 * If deployment is successful, you should see an active database instance with the name starting with <xxxxx> in        the RDS console.
 *  Run the following CLI command to validate the deployment: ```aws cloudformation describe xxxxxxxxxxxxx```
-
-
 
 ## Running the Guidance
 
