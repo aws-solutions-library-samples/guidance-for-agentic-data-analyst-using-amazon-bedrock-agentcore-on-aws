@@ -81,16 +81,27 @@ The following table provides a sample cost breakdown for deploying this Guidance
    2. Preprocess the datasets: ```python aws_data_analyst/preprocess_datasets.py```
    3. Upload the datasets to S3: ```python aws_data_analyst/upload_datasets_to_s3.py```
 
+To grant access to the demo Web-App you will need to create a user in the WebApp `Cognito` User Pool:
+1. Open the AWS console and go to the Cognito service page and select the `DataAnalystWebAppUserPool*` user-pool.
+2. On the left bar select `User management -> Users` and click on the "Create user" button.
+3. Enter a "User name", a "Temporary password" and click on "Create User"
+
 ## Deployment Validation
+After a successful CDK deployment, on the CloudFormation page of the AWS console you should see three stacks:
+* DataStack: ingestion S3 buckets and Lambda functions, Athena Tables, S3 Vectors.
+* AgentCoreStack: Strands Agent deployed on AgentCore.
+* WebAppStack: Streamlit WebApp.
 
-<Provide steps to validate a successful deployment, such as terminal output, verifying that the resource is created, status of the CloudFormation template, etc.>
+On the S3 page you can see the `datasets-*` bucket that contains two folders:
+* `datasets/`: containing the parquet data files.
+* `metadata/`: containing the JSON metadata files.
 
+On the CloudFront you can see the "Domain name" of the deployed web-app.
+Enter this domain name on any browser to load the demo web-app, and log-in with the user credentials that you created in the Cognito user-pool. The first time you log-in you will instructed to change the temporary password to a new one.
 
-**Examples:**
+Enter any query that could be supported by the available ONS dataset, and the data-analyst will provide an answer.
 
-* Open CloudFormation console and verify the status of the template with the name starting with xxxxxx.
-* If deployment is successful, you should see an active database instance with the name starting with <xxxxx> in        the RDS console.
-*  Run the following CLI command to validate the deployment: ```aws cloudformation describe xxxxxxxxxxxxx```
+![Example Query](./data/media/employment-rate.png)
 
 ## Running the Guidance
 
