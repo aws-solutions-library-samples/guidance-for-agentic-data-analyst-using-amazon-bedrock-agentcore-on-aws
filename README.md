@@ -125,11 +125,6 @@ To run the agent benchmark use the following script:
 python aws_data_analyst/evaluation/benchmark_agent.py
 ```
 
-| Model                                     | Latency (ms) | Mean Recall |
-| ----------------------------------------- | ------------ | ----------- |
-| amazon.nova-2-multimodal-embeddings-v1:0  |  326         |  78%        |
-| cohere.embed-v4:0                         |  215         |  76%        |
-
 | Model                                            | Median Latency (s) | Mean Cost ($) | Mean Score |
 | ------------------------------------------------ | ------------------ | ------------- | ---------- |
 | minimax.minimax-m2                               | 7.9                | 0.02          | 41%        |
