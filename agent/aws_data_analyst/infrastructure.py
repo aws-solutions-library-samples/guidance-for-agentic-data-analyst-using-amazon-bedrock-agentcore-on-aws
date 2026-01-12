@@ -13,7 +13,7 @@ S3_DATASETS_METADATA = f"s3://{S3_DATA_BUCKET}/metadata/"
 S3_ATHENA_QUERY_RESULTS_BUCKET = get_infrastructure_param('athena-query-results-bucket')
 S3_ATHENA_QUERY_RESULTS = f"s3://{S3_ATHENA_QUERY_RESULTS_BUCKET}"
 
-AGENT_ARN = ssm.get_parameter(Name='/data-analyst/agent-runtime-arn')
+AGENT_ARN = get_infrastructure_param('agent-runtime-arn')
 
 
 def get_vectordb_configuration(dev=False):

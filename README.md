@@ -13,6 +13,8 @@
   - [Deployment Steps](#deployment-steps)
   - [Deployment Validation](#deployment-validation)
   - [Running the Guidance](#running-the-guidance)
+    - [Dataset Search Benchmark](#dataset-search-benchmark)
+    - [Agent Benchmark](#agent-benchmark)
   - [Next Steps](#next-steps)
   - [Cleanup](#cleanup)
   - [Notices](#notices)
@@ -104,15 +106,37 @@ Enter any query that could be supported by the available ONS dataset, and the da
 ![Example Query](./data/media/employment-rate.png)
 
 ## Running the Guidance
+The `agent` directory contains two benchmarks, to compare the performance of different foundational models.
 
-<Provide instructions to run the Guidance with the sample data or input provided, and interpret the output received.> 
+### Dataset Search Benchmark
+To run the dataset search benchmark use the following script:
+```
+python aws_data_analyst/evaluation/benchmark_dataset_discovery.py
+```
 
-This section should include:
+| Model                                     | Latency (ms) | Mean Recall |
+| ----------------------------------------- | ------------ | ----------- |
+| amazon.nova-2-multimodal-embeddings-v1:0  |  326         |  78%        |
+| cohere.embed-v4:0                         |  215         |  76%        |
 
-* Guidance inputs
-* Commands to run
-* Expected output (provide screenshot if possible)
-* Output description
+### Agent Benchmark
+To run the agent benchmark use the following script:
+```
+python aws_data_analyst/evaluation/benchmark_agent.py
+```
+
+| Model                                     | Latency (ms) | Mean Recall |
+| ----------------------------------------- | ------------ | ----------- |
+| amazon.nova-2-multimodal-embeddings-v1:0  |  326         |  78%        |
+| cohere.embed-v4:0                         |  215         |  76%        |
+
+| Model                                            | Median Latency (s) | Mean Cost ($) | Mean Score |
+| ------------------------------------------------ | ------------------ | ------------- | ---------- |
+| minimax.minimax-m2                               | 7.9                | 0.02          | 41%        |
+| global.anthropic.claude-haiku-4-5-20251001-v1:0  | 2.7                | 0.07          | 61%        |
+| global.anthropic.claude-sonnet-4-5-20250929-v1:0 | 4.3                | 0.24          | 83%        |
+| global.anthropic.claude-opus-4-5-20251101-v1:0   | 4.4                | 0.30          | 88%        |
+
 
 ## Next Steps
 The system can work with any other dataset, simply upload its parquet data file, and the JSON metadata file to the correspondent S3 buckets.
