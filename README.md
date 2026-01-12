@@ -21,13 +21,13 @@
 ## Overview
 Organizations often manage hundreds of datasets across their data lakes, making it difficult for analysts to discover which datasets contain the information they need. Traditional keyword-based search falls short when users don't know the exact terminology or structure of available data. This creates a bottleneck where valuable data remains underutilized simply because it's hard to find.
 
-This guidance provides a scalable approach for deploying a Data Analyst Agent that can query hundreds of datasets hosted on Amazon Athena. By leveraging semantic search powered by Amazon S3 Vectors, the agent automatically identifies and retrieves the most relevant datasets based on user queries.
+This guidance provides a scalable approach for deploying a Data Analyst Agent that can query hundreds of datasets hosted on **Amazon Athena**. Built on the **Strands Agents** framework and deployed on **AWS AgentCore**, the agent leverages semantic search powered by **Amazon S3 Vectors** to automatically identify and retrieve the most relevant datasets based on user queries.
 
 For each new dataset added to the system, the admin must upload two files:
-1. A Parquet file with the raw data, which initialises the corresponding Athena table.
-2. A JSON metadata file with a dataset description, which creates a vector database entry enabling semantic discovery by the agent.
-3. 
-To showcase the solution's ability to handle hundreds of datasets, this guidance includes a ready-to-use script that downloads all `337` publicly available datasets from the UK Office for National Statistics (ONS) and generates the corresponding Parquet data and JSON metadata files, ready to be uploaded.
+1. A **Parquet file** with the raw data, which initialises the corresponding Athena table.
+2. A **JSON metadata file** with a dataset description, which creates a vector database entry enabling semantic discovery by the agent.
+
+To showcase the solution's ability to handle hundreds of datasets, this guidance includes a ready-to-use script that downloads all `337` publicly available datasets from the UK Office for National Statistics (ONS) and generates the corresponding Parquet data and JSON metadata files, ready to be uploaded. Additionally, a demo Streamlit Web-Application is provided, allowing users to interact with and query the agent through an intuitive interface.
 
 ![Reference Architecture Diagram](./data/media/architecture_diagram.drawio.png)
 
