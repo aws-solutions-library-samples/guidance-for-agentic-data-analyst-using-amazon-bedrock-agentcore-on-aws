@@ -76,7 +76,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 **Example blurb:** “This Guidance uses aws-cdk. If you are using aws-cdk for first time, please perform the below bootstrapping....”
 
 ## Deployment Steps
-1. Install packages in requirements using command ```pip install requirement.txt```
+1. Install packages in requirements using command ```pip install -r requirements.txt```
 2. From the `infrastructure` directory, deploy the stack with the CDK command: ```cdk deploy``` 
 3. From the `agent` directory, run the scripts to deploy the the `337` ONS datasets:
    1. Download the datasets: ```python aws_data_analyst/download_datasets.py```
