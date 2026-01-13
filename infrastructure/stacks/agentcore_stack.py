@@ -12,10 +12,11 @@ from aws_cdk import (
     aws_codebuild as codebuild,
     aws_s3_assets as s3_assets,
     aws_bedrockagentcore as bedrockagentcore,
-    aws_ssm as ssm
+    aws_ssm as ssm,
+    aws_kms as kms,
 )
 from constructs import Construct
-
+from cdk_nag import NagSuppressions
 
 class AgentCoreStack(Stack):
     """Stack for AgentCore runtime infrastructure"""
@@ -61,19 +62,26 @@ class AgentCoreStack(Stack):
                             ],
                         ),
                         iam.PolicyStatement(
-                            sid="ECRAccess",
+                            sid="ECRRepoAccess",
                             effect=iam.Effect.ALLOW,
                             actions=[
                                 "ecr:BatchCheckLayerAvailability",
                                 "ecr:GetDownloadUrlForLayer",
                                 "ecr:BatchGetImage",
-                                "ecr:GetAuthorizationToken",
                                 "ecr:PutImage",
                                 "ecr:InitiateLayerUpload",
                                 "ecr:UploadLayerPart",
                                 "ecr:CompleteLayerUpload",
                             ],
-                            resources=[ecr_repository.repository_arn, "*"],
+                            resources=[ecr_repository.repository_arn],
+                        ),
+                        iam.PolicyStatement(
+                            sid="ECRAuthorization",
+                            effect=iam.Effect.ALLOW,
+                            actions=[
+                                "ecr:GetAuthorizationToken"
+                            ],
+                            resources=["*"],
                         ),
                         iam.PolicyStatement(
                             sid="S3SourceAccess",
@@ -88,6 +96,18 @@ class AgentCoreStack(Stack):
             },
         )
 
+        NagSuppressions.add_resource_suppressions(
+            codebuild_role,
+            [{"id": "AwsSolutions-IAM5", "reason": "CodeBuild requires wildcards for CloudWatch logs, ECR auth token, and S3 source assets"}],
+            apply_to_children=True
+        )
+
+        codebuild_encryption_key = kms.Key(
+            self, "CodeBuildEncryptionKey",
+            enable_key_rotation=True,
+            description="KMS key for CodeBuild project encryption"
+        )
+
         build_project = codebuild.Project(
             self,
             "AgentImageBuildProject",
@@ -95,6 +115,7 @@ class AgentCoreStack(Stack):
             description=f"Build data-analyst agent Docker image for {self.stack_name}",
             role=codebuild_role,
             timeout=Duration.minutes(60),
+            encryption_key=codebuild_encryption_key,
             environment=codebuild.BuildEnvironment(
                 build_image=codebuild.LinuxArmBuildImage.AMAZON_LINUX_2_STANDARD_3_0,
                 compute_type=codebuild.ComputeType.LARGE,
@@ -148,7 +169,13 @@ class AgentCoreStack(Stack):
                 ),
             },
         )
-        
+
+        NagSuppressions.add_resource_suppressions_by_path(
+            self,
+            f"/{self.stack_name}/CodeBuildRole/DefaultPolicy/Resource",
+            [{"id": "AwsSolutions-IAM5", "reason": "CDK grants S3 read permissions for CodeBuild source bucket access"}]
+        )
+
         build_trigger_role = iam.Role(
             self,
             "BuildTriggerRole",
@@ -175,6 +202,12 @@ class AgentCoreStack(Stack):
             timeout=Duration.minutes(15),
             code=_lambda.Code.from_asset("lambda/func_build_trigger"),
             role=build_trigger_role,
+        )
+
+        NagSuppressions.add_resource_suppressions(
+            build_trigger_role,
+            [{"id": "AwsSolutions-IAM5", "reason": "Lambda requires CloudWatch logs wildcard for log group creation"}],
+            apply_to_children=True
         )
         
         # Custom Resource to Trigger Build
@@ -393,6 +426,11 @@ class AgentCoreStack(Stack):
                 )
             ],
             roles=[agent_role]
+        )
+
+        NagSuppressions.add_resource_suppressions(
+            agent_role_policy,
+            [{"id": "AwsSolutions-IAM5", "reason": "Agent requires wildcards for Athena queries, Glue tables, S3 buckets, Bedrock models, and AgentCore resources"}]
         )
 
         self.agent_runtime = bedrockagentcore.CfnRuntime(

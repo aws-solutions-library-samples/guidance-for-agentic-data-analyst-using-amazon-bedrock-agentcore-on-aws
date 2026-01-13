@@ -2,6 +2,7 @@
 aws-cdk-lib
 constructs
 cdk-s3-vectors
+cdk-nag
 
 # Runtime
 strands-agents

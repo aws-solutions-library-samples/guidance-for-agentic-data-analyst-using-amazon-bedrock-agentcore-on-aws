@@ -11,7 +11,7 @@ from aws_cdk import (
     aws_ssm as ssm
 )
 from constructs import Construct
-
+from cdk_nag import NagSuppressions
 from pathlib import Path
 
 # See: https://github.com/bimnett/cdk-s3-vectors/blob/main/examples/python.py
@@ -26,6 +26,8 @@ def construct_vector_db(stack, postfix=""):
     id_postfix = postfix.title()
     name_postfix = f"-{postfix.lower()}" if postfix else ""
 
+    # We use cdk-s3-vectors as high-level CDK construct https://constructs.dev/packages/cdk-s3-vectors/
+    # When AWS CloudFormation introduces native support, this construct can be replaced.
     dataset_embeddings = s3_vectors.Bucket(
         stack, "DatasetEmbeddings" + id_postfix,
         vector_bucket_name="dataset-embeddings" + name_postfix,
@@ -40,6 +42,37 @@ def construct_vector_db(stack, postfix=""):
         distance_metric="cosine",
     )
     dataset_embeddings_index.node.add_dependency(dataset_embeddings)
+
+    NagSuppressions.add_resource_suppressions(
+        dataset_embeddings.node.find_child("S3VectorsBucketHandler"),
+        [
+            {"id": "AwsSolutions-IAM4", "reason": "AWS managed policy used by cdk-s3-vectors construct"},
+            {"id": "AwsSolutions-IAM5", "reason": "Wildcard permissions required by cdk-s3-vectors construct"},
+            {"id": "AwsSolutions-L1", "reason": "Lambda runtime managed by cdk-s3-vectors construct"}
+        ],
+        apply_to_children=True
+    )
+
+    NagSuppressions.add_resource_suppressions(
+        dataset_embeddings.node.find_child("S3VectorsProvider"),
+        [
+            {"id": "AwsSolutions-IAM4", "reason": "AWS managed policy used by cdk-s3-vectors construct"},
+            {"id": "AwsSolutions-IAM5", "reason": "Wildcard permissions required by cdk-s3-vectors construct"},
+            {"id": "AwsSolutions-L1", "reason": "Lambda runtime managed by cdk-s3-vectors construct"}
+        ],
+        apply_to_children=True
+    )
+
+    NagSuppressions.add_resource_suppressions(
+        dataset_embeddings_index,
+        [
+            {"id": "AwsSolutions-IAM4", "reason": "AWS managed policy used by cdk-s3-vectors construct"},
+            {"id": "AwsSolutions-IAM5", "reason": "Wildcard permissions required by cdk-s3-vectors construct"},
+            {"id": "AwsSolutions-L1", "reason": "Lambda runtime managed by cdk-s3-vectors construct"}
+        ],
+        apply_to_children=True
+    )
+
     
     ssm.StringParameter(
         stack, "VectorDB_Bucket" + name_postfix,
@@ -85,6 +118,19 @@ class DataStack(Stack):
         # Dev DB for experiments
         construct_vector_db(self, 'dev')
 
+        # S3 bucket for access logs
+        self.access_logs_bucket = s3.Bucket(
+            self, "AccessLogsBucket",
+            encryption=s3.BucketEncryption.S3_MANAGED,
+            block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
+            enforce_ssl=True,
+            removal_policy=RemovalPolicy.DESTROY
+        )
+        NagSuppressions.add_resource_suppressions(
+            self.access_logs_bucket,
+            [{"id": "AwsSolutions-S1", "reason": "Access logs bucket does not need access logging itself"}]
+        )
+
         # S3 bucket for parquet files
         self.athena_data_bucket = s3.Bucket(
             self, "AthenaDataBucket",
@@ -92,7 +138,9 @@ class DataStack(Stack):
             encryption=s3.BucketEncryption.S3_MANAGED,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             enforce_ssl=True,
-            removal_policy=RemovalPolicy.DESTROY
+            removal_policy=RemovalPolicy.DESTROY,
+            server_access_logs_bucket=self.access_logs_bucket,
+            server_access_logs_prefix="athena-data-bucket/"
         )
 
         # S3 bucket name parameter to be used by scripts
@@ -109,7 +157,9 @@ class DataStack(Stack):
             encryption=s3.BucketEncryption.S3_MANAGED,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             enforce_ssl=True,
-            removal_policy=RemovalPolicy.DESTROY
+            removal_policy=RemovalPolicy.DESTROY,
+            server_access_logs_bucket=self.access_logs_bucket,
+            server_access_logs_prefix="athena-query-results/"
         )
 
         ssm.StringParameter(
@@ -304,6 +354,15 @@ class DataStack(Stack):
             ]
         ))
 
+        NagSuppressions.add_resource_suppressions(
+            lambda_role,
+            [
+                {"id": "AwsSolutions-IAM4", "reason": "AWSLambdaBasicExecutionRole is required for CloudWatch Logs"},
+                {"id": "AwsSolutions-IAM5", "reason": "S3 read permissions and Glue table wildcard required for dynamic table creation"}
+            ],
+            apply_to_children=True
+        )
+
         # This separates the heavy pyarrow dependency from the function code
         # For Python 3.13: arn:aws:lambda:region:336392948345:layer:AWSSDKPandas-Python313:5
         pyarrow_layer = lambda_.LayerVersion.from_layer_version_arn(
@@ -328,6 +387,11 @@ class DataStack(Stack):
                 "BUCKET_NAME": self.athena_data_bucket.bucket_name
             },
             description="Automatically creates Glue tables when new Parquet files are uploaded"
+        )
+
+        NagSuppressions.add_resource_suppressions(
+            glue_table_creator,
+            [{"id": "AwsSolutions-L1", "reason": "Python 3.13 used for AWSSDKPandas Lambda layer compatibility"}]
         )
         
         # S3 event notification to trigger Lambda for .parquet files in datasets/ prefix
@@ -397,9 +461,20 @@ class DataStack(Stack):
                 ]
             )
         )
+
+        NagSuppressions.add_resource_suppressions(
+            vector_db_lambda_role,
+            [
+                {"id": "AwsSolutions-IAM4", "reason": "AWSLambdaBasicExecutionRole is required for CloudWatch Logs"},
+                {"id": "AwsSolutions-IAM5", "reason": "Wildcards required for S3 read, S3 Vectors index operations, Bedrock foundation models, and SSM parameters"}
+            ],
+            apply_to_children=True
+        )
+
+
         vector_db_indexer = lambda_.Function(
             self, "VectorDB_IndexerFunction",
-            runtime=lambda_.Runtime.PYTHON_3_13,
+            runtime=lambda_.Runtime.PYTHON_3_14,
             handler="indexer.lambda_handler",
             code=lambda_.Code.from_asset(
                 str(lambda_dir / "indexer_dataset"),
@@ -420,4 +495,10 @@ class DataStack(Stack):
                 prefix="metadata/",
                 suffix=".json"
             )
+        )
+
+        NagSuppressions.add_resource_suppressions_by_path(
+            self,
+            f"/{self.stack_name}/BucketNotificationsHandler050a0587b7544547bf325f094a3db834/Role/Resource",
+            [{"id": "AwsSolutions-IAM4", "reason": "CDK internal BucketNotificationsHandler requires AWSLambdaBasicExecutionRole"}]
         )
