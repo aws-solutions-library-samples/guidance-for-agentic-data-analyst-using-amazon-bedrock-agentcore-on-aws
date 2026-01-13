@@ -31,5 +31,5 @@ pillow
 
 # Evaluation
 joblib
-irmetrics
+ir-metrics
 rich
