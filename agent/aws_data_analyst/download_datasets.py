@@ -22,7 +22,7 @@ MALFORMED_DATA = {
 
 def request(url, params=None, stream=None, json=False):
     while True:
-        r = requests.get(url, params=params, stream=stream)
+        r = requests.get(url, params=params, stream=stream, timeout=30)
 
         if r.status_code == 429:
             retry_after = r.headers.get('Retry-After', 10)

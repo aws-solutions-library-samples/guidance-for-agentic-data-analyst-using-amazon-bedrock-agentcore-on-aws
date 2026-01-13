@@ -211,7 +211,7 @@ class AgentCoreStack(Stack):
         )
         
         # Custom Resource to Trigger Build
-        source_hash = hashlib.md5(source_asset.asset_hash.encode()).hexdigest()[:8]
+        source_hash = hashlib.md5(source_asset.asset_hash.encode(), usedforsecurity=False).hexdigest()[:8]
         trigger_build = CustomResource(
             self,
             "TriggerImageBuild",

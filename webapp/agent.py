@@ -36,7 +36,8 @@ class LocalhostAgent:
             "http://localhost:8080/invocations",
             headers={"Content-Type": "application/json"},
             json={"message": message, "session_history": session_history},
-            stream=True)
+            stream=True,
+            timeout=600)
         response.raise_for_status()
 
         for line in response.iter_lines(decode_unicode=True):
