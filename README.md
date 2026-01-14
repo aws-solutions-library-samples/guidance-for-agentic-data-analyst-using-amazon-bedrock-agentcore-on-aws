@@ -8,8 +8,6 @@
     - [Cost](#cost)
     - [Sample Cost Table](#sample-cost-table)
   - [Prerequisites](#prerequisites)
-    - [Operating System](#operating-system)
-    - [aws cdk bootstrap](#aws-cdk-bootstrap)
   - [Deployment Steps](#deployment-steps)
   - [Deployment Validation](#deployment-validation)
   - [Running the Guidance](#running-the-guidance)
@@ -35,7 +33,7 @@ To showcase the solution's ability to handle hundreds of datasets, this guidance
 
 ### Cost
 
-_You are responsible for the cost of the AWS services used while running this Guidance. As of January 2026, the cost for running this Guidance with the default settings in the  US East (N. Virginia) is approximately $120.90 per month for processing 1,000 queries.
+You are responsible for the cost of the AWS services used while running this Guidance. As of January 2026, the cost for running this Guidance with the default settings in the  US East (N. Virginia) is approximately $120.90 per month for processing 1,000 queries.
 
 We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance.
 
@@ -45,7 +43,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 | AWS service  | Dimensions | Cost [USD] |
 | ----------- | ------------ | ------------ |
-| Amazon Bedrock foundation model (Anthropic Claude Haiku 4.5) | 1,000 invocations per month  | $ 70.20 |
+| Amazon Bedrock foundation model (Anthropic Claude Haiku 4.5) | 1,000 Agent invocations per month  | $ 70.20 |
 | Amazon Bedrock AgentCore runtime | 1,000 sessions per month | $ 14.06 |
 | Elastic Load Balancing | 1 Application Load Balancer | $ 16.45 |
 | AWS Lambda | 317 dataset ingestion per month | $ 6.03 |
@@ -55,26 +53,17 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | Amazon CloudFront | 1000 requests per month | $ 0.11 |
 
 ## Prerequisites
-
-### Operating System
-
-- Talk about the base Operating System (OS) and environment that can be used to run or deploy this Guidance, such as *Mac, Linux, or Windows*. Include all installable packages or modules required for the deployment. 
-- By default, assume Amazon Linux 2/Amazon Linux 2023 AMI as the base environment. All packages that are not available by default in AMI must be listed out.  Include the specific version number of the package or module.
-
-**Example:**
-“These deployment instructions are optimized to best work on **<Amazon Linux 2 AMI>**.  Deployment in another OS may require additional steps.”
-
-- Include install commands for packages, if applicable.
-
-### aws cdk bootstrap
-
-<If using aws-cdk, include steps for account bootstrap for new cdk users.>
-
-**Example blurb:** “This Guidance uses aws-cdk. If you are using aws-cdk for first time, please perform the below bootstrapping....”
+- Node.js 20+ installed
+- Docker running
+- AWS CDK bootstrapped (if first time):
+  ```bash
+  npm install -g aws-cdk
+  cdk bootstrap
+  ```
 
 ## Deployment Steps
 1. Install packages in requirements using command ```pip install -r requirements.txt```
-2. From the `infrastructure` directory, deploy the stack with the CDK command: ```cdk deploy``` 
+2. From the `infrastructure` directory, deploy the stack with the CDK command: ```cdk deploy --all``` 
 3. From the `agent` directory, run the scripts to deploy the the `337` ONS datasets:
    1. Download the datasets: ```python aws_data_analyst/download_datasets.py```
    2. Preprocess the datasets: ```python aws_data_analyst/preprocess_datasets.py```
