@@ -10,7 +10,7 @@
   - [Prerequisites](#prerequisites)
   - [Deployment Steps](#deployment-steps)
   - [Deployment Validation](#deployment-validation)
-  - [Running the Guidance](#running-the-guidance)
+  - [Benchmarks](#benchmarks)
     - [Dataset Search Benchmark](#dataset-search-benchmark)
     - [Agent Benchmark](#agent-benchmark)
   - [Next Steps](#next-steps)
@@ -77,9 +77,9 @@ To grant access to the demo Web-App you will need to create a user in the WebApp
 
 ## Deployment Validation
 After a successful CDK deployment, on the CloudFormation page of the AWS console you should see three stacks:
-* DataStack: ingestion S3 buckets and Lambda functions, Athena Tables, S3 Vectors.
-* AgentCoreStack: Strands Agent deployed on AgentCore.
-* WebAppStack: Streamlit WebApp.
+* `DataStack`: ingestion S3 buckets and Lambda functions, Athena Tables, S3 Vectors.
+* `AgentCoreStack`: Strands Agent deployed on AgentCore.
+* `WebAppStack`: Streamlit WebApp.
 
 On the S3 page you can see the `datasets-*` bucket that contains two folders:
 * `datasets/`: containing the parquet data files.
@@ -92,7 +92,12 @@ Enter any query that could be supported by the available ONS dataset, and the da
 
 ![Example Query](./data/media/employment-rate.png)
 
-## Running the Guidance
+Other example questions:
+* Did Brexit change trade with the EU?
+* What does the UK import from and export to the USA?
+* When was the highest inflation rate in the uk?
+
+## Benchmarks
 The `agent` directory contains two benchmarks, to compare the performance of different foundational models.
 
 ### Dataset Search Benchmark
@@ -101,10 +106,10 @@ To run the dataset search benchmark use the following script:
 python aws_data_analyst/evaluation/benchmark_dataset_discovery.py
 ```
 
-| Model                                     | Latency (ms) | Mean Recall |
-| ----------------------------------------- | ------------ | ----------- |
-| amazon.nova-2-multimodal-embeddings-v1:0  |  326         |  78%        |
-| cohere.embed-v4:0                         |  215         |  76%        |
+| Model                                     | Latency (ms) | Mean Recall@3 |
+| ----------------------------------------- | ------------ | ------------- |
+| amazon.nova-2-multimodal-embeddings-v1:0  |  326         |  78%          |
+| cohere.embed-v4:0                         |  215         |  76%          |
 
 ### Agent Benchmark
 To run the agent benchmark use the following script:
@@ -118,7 +123,6 @@ python aws_data_analyst/evaluation/benchmark_agent.py
 | global.anthropic.claude-haiku-4-5-20251001-v1:0  | 2.7                | 0.07          | 61%        |
 | global.anthropic.claude-sonnet-4-5-20250929-v1:0 | 4.3                | 0.24          | 83%        |
 | global.anthropic.claude-opus-4-5-20251101-v1:0   | 4.4                | 0.30          | 88%        |
-
 
 ## Next Steps
 The system can work with any other dataset, simply upload its parquet data file, and the JSON metadata file to the correspondent S3 buckets.
