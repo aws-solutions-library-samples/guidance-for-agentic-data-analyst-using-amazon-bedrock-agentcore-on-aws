@@ -53,8 +53,9 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | Amazon CloudFront | 1000 requests per month | $ 0.11 |
 
 ## Prerequisites
-- Node.js 20+ installed
-- Docker running
+- AWS CLI configured with appropriate permissions
+- Docker installed and running
+- Python 3.10+
 - AWS CDK bootstrapped (if first time):
   ```bash
   npm install -g aws-cdk
