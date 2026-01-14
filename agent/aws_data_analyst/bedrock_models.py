@@ -1,5 +1,5 @@
 # See: https://aws.amazon.com/bedrock/pricing/
-DEFAULT_MODEL_ID = "global.anthropic.claude-opus-4-5-20251101-v1:0"
+DEFAULT_MODEL_ID = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 MINMAX_M2_MODEL = {
     'id': "minimax.minimax-m2",
