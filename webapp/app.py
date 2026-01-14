@@ -91,9 +91,14 @@ def display_message(msg):
 
 # Controls
 with st.sidebar:
-    st.header("User Input")
-
-    if user_prompt := st.chat_input("Enter your input here."):
+    st.header("Data Analyst Agent")
+    st.markdown("This agent helps you analyse data from the UK Office for National Statistics (ONS) datasets.")
+    st.markdown("""For example, you can ask questions like:
+ * *Graph the employment rate through the years.*
+ * *Did Brexit change trade with the EU?*
+ * *When was the highest inflation rate in the UK?*
+""")
+    if user_prompt := st.chat_input("Enter your question here."):
         agent_chat(user_prompt)
 
     st.button("Logout", "logout_btn", on_click=lambda: authenticator.logout())
