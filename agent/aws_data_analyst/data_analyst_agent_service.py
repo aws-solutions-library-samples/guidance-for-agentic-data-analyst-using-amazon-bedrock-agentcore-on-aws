@@ -37,6 +37,6 @@ async def invoke(payload):
 if __name__ == "__main__":
     """
     To spin-up the Agent server locally run:
-    python -m aws_data_analyst.agent_service
+    python -m aws_data_analyst.data_analyst_agent_service
     """
     app.run()
