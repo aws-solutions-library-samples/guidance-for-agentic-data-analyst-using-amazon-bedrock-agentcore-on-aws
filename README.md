@@ -5,6 +5,7 @@
 - [Data Analyst Agent using Hundreds of Datasets on Amazon Athena](#data-analyst-agent-using-hundreds-of-datasets-on-amazon-athena)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
+    - [Notes](#notes)
     - [Cost](#cost)
     - [Sample Cost Table](#sample-cost-table)
   - [Prerequisites](#prerequisites)
@@ -30,6 +31,10 @@ For each new dataset added to the system, the admin must upload two files:
 To showcase the solution's ability to handle hundreds of datasets, this guidance includes a ready-to-use script that downloads all `337` publicly available datasets from the UK Office for National Statistics (ONS) and generates the corresponding Parquet data and JSON metadata files, ready to be uploaded. Additionally, a demo Streamlit Web-Application is provided, allowing users to interact with and query the agent through an intuitive interface.
 
 ![Reference Architecture Diagram](./data/media/architecture_diagram.drawio.png)
+
+### Notes
+
+The sample datasets used in this guidance are sourced from the [UK Office for National Statistics (ONS)](https://www.ons.gov.uk/), a publicly available open data provider for statistics about the UK economy, population, and society. These datasets are independent of Amazon and do not represent Amazon data, customers, or business operations. They are used solely to demonstrate the solution's capability to handle hundreds of datasets at scale.
 
 ### Cost
 
