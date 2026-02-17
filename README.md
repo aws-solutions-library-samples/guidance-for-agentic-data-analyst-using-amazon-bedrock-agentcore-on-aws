@@ -67,6 +67,8 @@ The following table provides a sample cost breakdown for deploying this Guidance
   cdk bootstrap
   ```
 
+**Note:** This solution has been tested in the us-east-1 region but should work in other regions where all required services (Amazon Bedrock with the specified models, AgentCore, S3 Vectors, Athena, etc.) are available. Verify service availability in your target region before deployment. Web Application Firewall (WAF) will always be deployed to us-east-1 region.
+
 ## Deployment Steps
 1. Install packages in requirements using command ```pip install -r requirements.txt```
 2. From the `infrastructure` directory, deploy the stack with the CDK command: ```cdk deploy --all``` 
