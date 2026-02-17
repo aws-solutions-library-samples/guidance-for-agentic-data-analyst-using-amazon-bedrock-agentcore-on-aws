@@ -33,6 +33,7 @@ class WebAppStack(Stack):
                  scope: Construct,
                  construct_id: str,
                  agent_stack,
+                 waf_stack,
                  **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         
@@ -259,8 +260,10 @@ class WebAppStack(Stack):
             ),
             minimum_protocol_version=cloudfront.SecurityPolicyProtocol.TLS_V1_2_2021,
             log_bucket=cloudfront_logs_bucket,
-            log_file_prefix="cloudfront-logs/"
+            log_file_prefix="cloudfront-logs/",
+            web_acl_id=waf_stack.web_acl.attr_arn,
         )
+
 
         NagSuppressions.add_resource_suppressions(
             cloudfront_distribution,
