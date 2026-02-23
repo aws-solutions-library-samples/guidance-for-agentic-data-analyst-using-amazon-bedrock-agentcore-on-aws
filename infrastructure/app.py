@@ -22,10 +22,10 @@ us_east_1_env = cdk.Environment(
 
 app = cdk.App()
 
-waf_stack = WafStack(app, "WafStack", env=us_east_1_env, cross_region_references=True)
-data_stack = DataStack(app, "DataStack", env=env)
-agentcore_stack = AgentCoreStack(app, "AgentCoreStack", data_stack=data_stack, env=env)
-webapp_stack = WebAppStack(app, "WebAppStack", agent_stack=agentcore_stack, waf_stack=waf_stack, env=env, cross_region_references=True)
+waf_stack = WafStack(app, "WafStack", env=us_east_1_env, cross_region_references=True, description="SO9670 - Web Application Firewall Stack")
+data_stack = DataStack(app, "DataStack", env=env, description="SO9670 - Data Stack")
+agentcore_stack = AgentCoreStack(app, "AgentCoreStack", data_stack=data_stack, env=env, description="SO9670 - AgentCore Stack")
+webapp_stack = WebAppStack(app, "WebAppStack", agent_stack=agentcore_stack, waf_stack=waf_stack, env=env, cross_region_references=True, description="SO9670 - WebApp Stack")
 
 cdk.Aspects.of(app).add(cdk_nag.AwsSolutionsChecks())
 
