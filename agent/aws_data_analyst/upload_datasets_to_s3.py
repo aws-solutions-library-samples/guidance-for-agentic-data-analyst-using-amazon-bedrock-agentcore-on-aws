@@ -39,11 +39,13 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
     try:
         # Check if file already exists
         try:
-            s3_client.head_object(Bucket=S3_DATA_BUCKET, Key=s3_key)
-            logger.info(f"  SKIPPED {upload_description}")
-            return UploadStatus.SKIPPED
+            response = s3_client.head_object(Bucket=S3_DATA_BUCKET, Key=s3_key)
+            if response['ContentLength'] == local_file.stat().st_size:
+                logger.info(f"  SKIPPED {upload_description}")
+                return UploadStatus.SKIPPED
+            logger.info(f"  Size mismatch for {s3_key}, re-uploading")
         except ClientError as e:
-            if e.response['Error']['Code'] != '404':
+            if e.response.get('Error', {}).get('Code') != '404':
                 logger.error(f"[S3 ERROR] Error checking file existence for {s3_key}: {e}")
                 raise
         
