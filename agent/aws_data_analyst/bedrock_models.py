@@ -1,5 +1,4 @@
 # See: https://aws.amazon.com/bedrock/pricing/
-DEFAULT_MODEL_ID = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 MINMAX_M2_MODEL = {
     'id': "minimax.minimax-m2",
@@ -37,8 +36,8 @@ CLAUDE_HAIKU_4_5_MODEL = {
         }
     }
 }
-CLAUDE_SONNET_4_5_MODEL = {
-    'id': "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+CLAUDE_SONNET_4_6_MODEL = {
+    'id': "global.anthropic.claude-sonnet-4-6",
     'cost': {
         'on_demand': {
             'input' : 0.000003,
@@ -46,8 +45,8 @@ CLAUDE_SONNET_4_5_MODEL = {
         }
     }
 }
-CLAUDE_OPUS_4_5_MODEL = {
-    'id': "global.anthropic.claude-opus-4-5-20251101-v1:0",
+CLAUDE_OPUS_4_6_MODEL = {
+    'id': "global.anthropic.claude-opus-4-6-v1",
     'cost': {
         'on_demand': {
             'input' : 0.000005,
@@ -65,10 +64,14 @@ QWEN3_CODER_30B_A3B = {
     }
 }
 
+DEFAULT_MODEL_ID = CLAUDE_OPUS_4_6_MODEL['id']
+DEFAULT_TEMPERATURE = 0.1
+
+
 MODELS = {
     model['id']: model for model in [
         MINMAX_M2_MODEL,
         CLAUDE_HAIKU_4_5_MODEL,
-        CLAUDE_SONNET_4_5_MODEL,
-        CLAUDE_OPUS_4_5_MODEL]
+        CLAUDE_SONNET_4_6_MODEL,
+        CLAUDE_OPUS_4_6_MODEL]
 }

@@ -15,6 +15,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { Message } from '../types';
 import { streamAgentInvoke } from '../services/api';
 import { useAuth } from '../auth';
+import { useReactToPrint } from 'react-to-print';
 import { v4 as uuidv4 } from 'uuid';
 
 const CodeBlock = ({ inline, className, children, ...props }: { inline?: boolean; className?: string; children?: React.ReactNode }) => {
@@ -34,6 +35,12 @@ export function ChatPane() {
   const [userInput, setUserInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `chat-report-${sessionId.slice(0, 8)}`,
+  });
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -86,6 +93,7 @@ export function ChatPane() {
         header={
           <Header variant="h1" actions={
             <SpaceBetween direction="horizontal" size="xs">
+              <Button onClick={() => handlePrint()} disabled={messages.length === 0}>Print</Button>
               <Button onClick={handleReset}>New Chat</Button>
               <Button onClick={signOut}>Logout</Button>
             </SpaceBetween>
@@ -142,6 +150,37 @@ export function ChatPane() {
               {isProcessing ? <Spinner /> : 'Send'}
             </Button>
           </SpaceBetween>
+
+          {/* Hidden printable content */}
+          <div style={{ display: 'none' }}>
+            <div ref={printRef} className="print-report">
+              <style>{`
+                @media print {
+                  .print-report { padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+                  .print-report h2 { margin-bottom: 4px; }
+                  .print-report .session-id { color: #666; font-size: 12px; margin-bottom: 16px; }
+                  .print-report .message { margin-bottom: 12px; page-break-inside: avoid; }
+                  .print-report .role { font-weight: bold; margin-bottom: 4px; }
+                  .print-report .content { padding-left: 12px; }
+                  .print-report img { max-width: 100%; page-break-inside: avoid; }
+                  .print-report pre { page-break-inside: avoid; }
+                }
+              `}</style>
+              <h2>Chat Report</h2>
+              <div className="session-id">Session: {sessionId}</div>
+              {messages.map((msg, i) => (
+                <div key={i} className="message">
+                  <div className="role">{msg.role === 'user' ? 'You' : 'Assistant'}</div>
+                  <div className="content">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: CodeBlock }}>{msg.content}</ReactMarkdown>
+                    {msg.images?.map((img, idx) => (
+                      <img key={idx} src={`data:image/png;base64,${img}`} alt={`Chart ${idx + 1}`} style={{ maxWidth: '100%' }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <Box variant="small" color="text-status-inactive">Session: {sessionId.slice(0, 8)}...</Box>
         </SpaceBetween>

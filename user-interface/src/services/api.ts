@@ -10,8 +10,8 @@ export async function* streamAgentInvoke(
   sessionId: string,
   history?: Array<[string, string]>,
 ): AsyncGenerator<StreamEvent> {
-  const payload: { message: string; session_history?: Array<[string, string]> } = { message: prompt };
-  if (history) payload.session_history = history;
+  const payload: { message: string; history?: Array<[string, string]> } = { message: prompt };
+  if (history) payload.history = history;
 
   const session = await fetchAuthSession();
   if (!session.credentials) throw new Error('No AWS credentials');
@@ -32,7 +32,6 @@ export async function* streamAgentInvoke(
   const reader = stream.transformToWebStream().getReader();
   const decoder = new TextDecoder();
   let buffer = '';
-  const toolNames: Record<string, string> = {};
 
   while (true) {
     const { done, value } = await reader.read();
@@ -51,7 +50,6 @@ export async function* streamAgentInvoke(
           yield { type: 'error', content: String(event.message || event.error) };
 
         } else if (event.msg_type === 'datasets') {
-          // Initial dataset retrieval results
           const entries = event.datasets?.entries;
           if (entries?.length) {
             const text = entries.map((d: any) =>
@@ -60,41 +58,31 @@ export async function* streamAgentInvoke(
             yield { type: 'text', content: `Relevant ONS Datasets:\n${text}` };
           }
 
-        } else if (event.msg_type === 'message') {
-          // Unwrap message.content array (contains text, toolUse, toolResult items)
-          for (const item of event.message?.content || []) {
-            if (item.text) {
-              yield { type: 'text', content: item.text };
-            } else if (item.toolUse) {
-              const tu = item.toolUse;
-              toolNames[tu.toolUseId] = tu.name;
-              if (tu.name === 'python_repl') {
-                yield { type: 'python_code', content: tu.input.code };
-              } else if (tu.name === 'search_datasets') {
-                yield { type: 'text', content: `🔍 Searching datasets for: "${tu.input.query}"` };
-              }
-            } else if (item.toolResult) {
-              const tr = item.toolResult;
-              const name = toolNames[tr.toolUseId] || '';
-              if (name === 'python_repl') {
-                for (const r of tr.content || []) {
-                  if (r.text) yield { type: 'execution_output', content: r.text };
-                }
-              } else if (name === 'search_datasets') {
-                const text = (tr.content || []).map((r: any) => r.text).filter(Boolean).join('\n');
-                if (text) yield { type: 'text', content: text };
-              }
-            }
+        } else if (event.msg_type === 'text' && event.text) {
+          yield { type: 'text', content: event.text };
+
+        } else if (event.msg_type === 'toolUse' && event.image) {
+          yield { type: 'image', content: event.image };
+
+        } else if (event.msg_type === 'toolUse' && event.name === 'python_repl') {
+          yield { type: 'python_code', content: event.input.code };
+
+        } else if (event.msg_type === 'toolUse' && event.name === 'search_datasets') {
+          yield { type: 'text', content: `🔍 Searching datasets for: "${event.input.query}"` };
+
+        } else if (event.msg_type === 'toolResult' && event.name === 'python_repl') {
+          for (const result of event.content || []) {
+            if (result.text) yield { type: 'execution_output', content: result.text };
           }
 
+        } else if (event.msg_type === 'toolResult' && event.name === 'search_datasets') {
+          const text = (event.content || []).map((r: any) => r.text).filter(Boolean).join('\n');
+          if (text) yield { type: 'text', content: text };
+
         } else if (event.msg_type === 'result') {
-          // Final result with answer, visualization, and metrics
           const result = event.result;
           if (result?.answer) {
             yield { type: 'text', content: result.answer };
-          }
-          if (result?.visualization) {
-            yield { type: 'image', content: result.visualization };
           }
           if (result?.metrics?.agent) {
             const m = result.metrics.agent;

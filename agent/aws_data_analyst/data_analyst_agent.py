@@ -6,6 +6,7 @@ from enum import Enum
 
 from strands import Agent
 from strands.models import BedrockModel
+from strands import tool
 
 from json_repair import repair_json
 from diskcache import Cache
@@ -15,12 +16,11 @@ from aws_data_analyst.python_environment import PythonInterpreter
 from aws_data_analyst.datasets_db import DatasetsDB
 from aws_data_analyst.datasets import metadata_to_description
 from aws_data_analyst.dataset_search_tool import DatasetSearch
-from aws_data_analyst.bedrock_models import MODELS, DEFAULT_MODEL_ID
+from aws_data_analyst.bedrock_models import MODELS, DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
 
 
 CACHE = Cache("/tmp/.cache/DataAnalystAgent")
 
-TEMPERATURE = 0.2
 DATASET_RETRIEVAL_TOPK = 3
 
 SYSTEM_PROMPT_TEMPLATE = Template("""You are an expert data-analyst answering user queries based on the Office for National Statistics (ONS) datasets.
@@ -29,9 +29,10 @@ You can use the python_repl tool to execute python code fetching data, and perfo
 Your answer has to be grounded on an ONS dataset.
 If you cannot find a suitable ONS dataset to ground your question, set "supported_by_data" to `false` and explain in the answer text about the lack of a suitable ONS dataset.
 
-If the question does not need a visualization set the "visualization" field to: null. Otherwise, generate a visualization with seaborn and save an image in .png format in the {{TMP_DIR}} directory.
-The text answer has to contain all the required information, the visualization is only an optional add-on.
-Do not try to show the image: the python_repl tool executes the code in a sub-process without a GUI.
+Do not try to show any matplotlib/seaborn images: the python_repl tool executes the code in a sub-process without a GUI.
+If you need to generate a file use this temporary directory: {{TEMP_DIR}}
+The user has no access to this directory.
+If you want to show an image to the user invoke the `visualize_image` tool.
 
 For each user query you will be provided with a set of datasets whose description is semantically similar to the given query.
 You can search additional ONS datasets with the `search_datasets` tool.
@@ -40,8 +41,7 @@ For example, a more generic dataset can contain specific information about the u
 You should return a JSON object with the following format:
 {
     "answer": "answer text",
-    "supported_by_data": true / false,
-    "visualization": "{{TMP_DIR}}/image_name.png" or null
+    "supported_by_data": true / false
 }
 
 The python environment of the python_repl tool was initialised with the following code (you do not need to rewrite this code):
@@ -97,12 +97,23 @@ class ResourceLocation(Enum):
     CLOUD = "cloud" 
 
 
+@tool
+def visualize_image(image_path: str):
+    """
+    Load the given PNG image at `image_path` and visualize it on the user client application.
+    
+    Args:
+        image_path: the path of the PNG image to be visualized.
+    """
+    pass
+
+
 class DataAnalystAgent:
     def __init__(self,
                  model_id=DEFAULT_MODEL_ID,
-                 temperature=TEMPERATURE,
+                 temperature=DEFAULT_TEMPERATURE,
                  resource_location=ResourceLocation.CLOUD,
-                 session_history=None):
+                 history=None):
         self.model_id = model_id
         self.temperature = temperature
         self.cost = MODELS[model_id]['cost']
@@ -123,19 +134,29 @@ class DataAnalystAgent:
         self.tmp_dir = tempfile.mkdtemp(prefix='data_analyst_', dir='/tmp')
         self.python_repl = PythonInterpreter(code_preamble)
         self.datasets_db = DatasetsDB()
+        self.tool_uses = {}
+
+        messages = []
+        if history is not None:
+            for role, msg in history:
+                messages.append({
+                    'role': role,
+                    'content': [{'text': msg}]
+                })
 
         self.agent = Agent(
             model = BedrockModel(
                 model_id=model_id,
-                temperature=TEMPERATURE,
+                temperature=DEFAULT_TEMPERATURE,
             ),
             tools=[
                 self.python_repl.get_tool(),
+                visualize_image,
                 DatasetSearch(self.datasets_db, self.datasets_loader).get_tool()
             ],
             callback_handler=None,
             system_prompt=SYSTEM_PROMPT_TEMPLATE.render(CODE_PREAMBLE=code_preamble, TMP_DIR=self.tmp_dir),
-            messages=session_history)
+            messages=messages)
         
         # Render a generic system prompt prototype to be used as part of the cache-key
         self.prompt_template_prototype = SYSTEM_PROMPT_TEMPLATE.render(TMP_DIR="/tmp", CODE_PREAMBLE=code_preamble)
@@ -174,19 +195,6 @@ class DataAnalystAgent:
         if type(response_data) is str:
             response_data = {"answer": response_data}
         
-        if 'visualization' in response_data and response_data['visualization']:
-            if type(response_data['visualization']) is list:
-                response_data['visualization'] = response_data['visualization'][0]
-            
-            if not path.exists(response_data['visualization']):
-                response_data['visualization'] = None
-            else:
-                # Serialize the image to base64
-                with open(response_data['visualization'], 'rb') as f:
-                    response_data['visualization'] = base64.b64encode(f.read()).decode('utf-8')
-        else:
-            response_data['visualization'] = None
-
         metrics = response.metrics.get_summary()
         response_data['metrics'] = {
             'agent': {
@@ -245,10 +253,30 @@ class DataAnalystAgent:
                         'result': result
                     }
                 elif 'message' in event:
-                    yield {
-                        'msg_type': 'message',
-                        'message': event['message']
-                    }
+                    for content in event['message']['content']:
+                        if 'text' in content:
+                            yield {"msg_type": "text", "text": content['text']}
+                        
+                        elif 'toolUse' in content:
+                            toolUse = content['toolUse']
+                            self.tool_uses[toolUse['toolUseId']] = toolUse['name']
+                            toolUse["msg_type"] = "toolUse"
+
+                            if toolUse['name'] == 'visualize_image':
+                                with open(toolUse['input']['image_path'], 'rb') as f:
+                                    toolUse['image'] = base64.b64encode(f.read()).decode('utf-8')
+                            
+                            yield toolUse
+                        
+                        elif 'toolResult' in content:
+                            toolResult = content['toolResult']
+                            toolResult['name'] = self.tool_uses[toolResult['toolUseId']]
+                            
+                            if toolResult['name'] == 'visualize_image':
+                                continue
+
+                            toolResult["msg_type"] = "toolResult"
+                            yield toolResult
 
 
 if __name__ == "__main__":
