@@ -76,8 +76,14 @@ export async function* streamAgentInvoke(
           }
 
         } else if (event.msg_type === 'toolResult' && event.name === 'search_datasets') {
-          const text = (event.content || []).map((r: any) => r.text).filter(Boolean).join('\n');
-          if (text) yield { type: 'text', content: text };
+          const lines = (event.content || [])
+            .flatMap((r: any) => (r.text || '').split('\n'))
+            .filter((l: string) => l.startsWith('[ID: '))
+            .map((l: string) => {
+              const m = l.match(/^\[ID: (.+?)\] (.+)$/);
+              return m ? ` * 📊 [${m[1]}](https://www.ons.gov.uk/datasets/${m[1]}): ${m[2]}` : ` * 📊 ${l}`;
+            });
+          if (lines.length) yield { type: 'text', content: `ONS Datasets relevant to the Agent query:\n${lines.join('\n')}` };
 
         } else if (event.msg_type === 'result') {
           const result = event.result;

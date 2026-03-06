@@ -1,7 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import '@cloudscape-design/global-styles/index.css';
+import { applyMode, Mode } from '@cloudscape-design/global-styles';
 import { Amplify } from 'aws-amplify';
+
+applyMode(Mode.Dark);
 import App from './App';
 
 Amplify.configure({
