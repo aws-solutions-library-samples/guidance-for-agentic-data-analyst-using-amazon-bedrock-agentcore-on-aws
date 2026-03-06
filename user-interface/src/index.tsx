@@ -3,9 +3,9 @@ import ReactDOM from 'react-dom/client';
 import '@cloudscape-design/global-styles/index.css';
 import { applyMode, Mode } from '@cloudscape-design/global-styles';
 import { Amplify } from 'aws-amplify';
+import App from './App';
 
 applyMode(Mode.Dark);
-import App from './App';
 
 Amplify.configure({
   Auth: {
