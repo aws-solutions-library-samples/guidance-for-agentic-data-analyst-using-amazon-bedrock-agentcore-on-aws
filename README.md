@@ -38,7 +38,7 @@ The sample datasets used in this guidance are sourced from the [UK Office for Na
 
 ### Cost
 
-You are responsible for the cost of the AWS services used while running this Guidance. As of January 2026, the cost for running this Guidance with the default settings in the  US East (N. Virginia) is approximately $120.90 per month for processing 1,000 queries.
+You are responsible for the cost of the AWS services used while running this Guidance. As of January 2026, the cost for running this Guidance with the default settings in the  US East (N. Virginia) is approximately $95.44 per month for processing 1,000 queries.
 
 We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance.
 
@@ -50,9 +50,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 | ----------- | ------------ | ------------ |
 | Amazon Bedrock foundation model (Anthropic Claude Haiku 4.5) | 1,000 Agent invocations per month  | $ 70.20 |
 | Amazon Bedrock AgentCore runtime | 1,000 sessions per month | $ 14.06 |
-| Elastic Load Balancing | 1 Application Load Balancer | $ 16.45 |
 | AWS Lambda | 317 dataset ingestion per month | $ 6.03 |
-| AWS Fargate | Container running continuously for web application | $ 9.01 |
 | Amazon Athena | 1000 requests per month | $ 4.88 |
 | Amazon Simple Storage Service (S3) | 1 GB per month | $ 0.16 |
 | Amazon CloudFront | 1000 requests per month | $ 0.11 |
@@ -126,10 +124,10 @@ python aws_data_analyst/evaluation/benchmark_agent.py
 
 | Model                                            | Median Latency (s) | Mean Cost ($) | Mean Score |
 | ------------------------------------------------ | ------------------ | ------------- | ---------- |
-| minimax.minimax-m2                               | 7.9                | 0.02          | 41%        |
-| global.anthropic.claude-haiku-4-5-20251001-v1:0  | 2.7                | 0.07          | 61%        |
-| global.anthropic.claude-sonnet-4-5-20250929-v1:0 | 4.3                | 0.24          | 83%        |
-| global.anthropic.claude-opus-4-5-20251101-v1:0   | 4.4                | 0.30          | 88%        |
+| minimax.minimax-m2                               | 6.8                | 0.02          | 57%        |
+| global.anthropic.claude-haiku-4-5-20251001-v1:0  | 2.8                | 0.07          | 50%        |
+| global.anthropic.claude-sonnet-4-6               | 8.0                | 0.20          | 74%        |
+| global.anthropic.claude-opus-4-6-v1              | 5.2                | 0.37          | 89%        |
 
 ## Next Steps
 The system can work with any other dataset, simply upload its parquet data file, and the JSON metadata file to the correspondent S3 buckets.
