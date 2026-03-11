@@ -30,7 +30,7 @@ For each new dataset added to the system, the admin must upload two files:
 
 To showcase the solution's ability to handle hundreds of datasets, this guidance includes a ready-to-use script that downloads all `337` publicly available datasets from the UK Office for National Statistics (ONS) and generates the corresponding Parquet data and JSON metadata files, ready to be uploaded. Additionally, a demo Streamlit Web-Application is provided, allowing users to interact with and query the agent through an intuitive interface.
 
-![Reference Architecture Diagram](./data/media/architecture_diagram.drawio.png)
+![Reference Architecture Diagram](./data/media/architecture-diagram.png)
 
 ### Notes
 
