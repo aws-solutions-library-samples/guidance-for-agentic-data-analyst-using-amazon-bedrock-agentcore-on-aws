@@ -1,11 +1,11 @@
 import json
 import threading
 import time
+from collections import Counter
 
 import s3fs
 
 from aws_data_analyst.infrastructure import S3_DATASETS_METADATA
-from aws_data_analyst.datasets import QueryHandler
 from aws_data_analyst.athena_query import athena_query
 
 
@@ -42,7 +42,17 @@ class CloudDatasetLoader:
         return metadata
 
 
-class CloudQueryHandler(QueryHandler):
+class CloudQueryHandler:
+    def __init__(self) -> None:
+        self.datasets = Counter()
+        self.latencies = []
+
+    def metrics(self):
+        return {
+            'datasets': dict(self.datasets),
+            'latencies': self.latencies
+        }
+
     def query_ons_dataset(self, dataset_id, dimension_filters=None):
         self.datasets[dataset_id] += 1
         start = time.time()

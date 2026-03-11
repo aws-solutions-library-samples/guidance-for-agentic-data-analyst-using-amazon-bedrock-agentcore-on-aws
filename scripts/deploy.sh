@@ -1,16 +1,16 @@
 #!/bin/bash
 set -e
 
-SKIP_CDK=false
-if [[ "$1" == "--skip-cdk" ]]; then
-    SKIP_CDK=true
+DEPLOY_CDK=false
+if [[ "$1" == "--cdk" ]]; then
+    DEPLOY_CDK=true
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="$SCRIPT_DIR/../infrastructure"
 UI_DIR="$SCRIPT_DIR/../user-interface"
 
-if [[ "$SKIP_CDK" == false ]]; then
+if [[ "$DEPLOY_CDK" == true ]]; then
     cd "$INFRA_DIR"
     echo "=== Deploying CDK stacks ==="
     cdk deploy --all --require-approval never

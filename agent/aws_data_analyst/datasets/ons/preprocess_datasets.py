@@ -1,15 +1,37 @@
 import re
 import json
 from collections import Counter
-from os import path
+from os import path, listdir
 
 from tqdm import tqdm
 import pandas as pd
 
-from aws_data_analyst.datasets import iterate_datasets
+from aws_data_analyst.datasets.ons import ONS_DATASETS
 
 
 OBSERVATION_PATTERN = re.compile(r"[vV]4_\d")
+
+
+def dataset_data(dataset_id):
+    dataset_dir = ONS_DATASETS / dataset_id
+    metadata_path = dataset_dir / "metadata.json"
+    data_path = dataset_dir / "data.csv"
+    if not metadata_path.exists() or not data_path.exists():
+        return None
+    else:
+        return {
+            'id': dataset_id,
+            'data': data_path,
+            'metadata': metadata_path, 
+        }
+
+
+def iterate_datasets():
+    for dataset_id in sorted(listdir(ONS_DATASETS)):
+        data = dataset_data(dataset_id)
+        if data is None:
+            continue
+        yield data
 
 
 def find_observation(headers):
@@ -80,6 +102,36 @@ def get_csv_header(file_path):
     return header.split(',')
 
 
+def dimension_description(name, data, max_dim_items):
+    values = sorted(data['values'].keys())
+    if len(values) <= max_dim_items:
+        values_str = ", ".join([f'"{v}"' for v in values])
+    else:
+        index = max_dim_items // 2
+        start = ", ".join([f'"{v}"' for v in values[:index]])
+        index *= -1
+        end = ", ".join([f'"{v}"' for v in values[index:]])
+        values_str = f"{start}, ..., {end}"
+    return f"{name}: {data['label']}. Possible values: {values_str}."
+
+
+def metadata_to_description(data, max_dim_items=20):
+    obs = data['observation']
+
+    buffer = [
+        f"UK Office for National Statistics Dataset ID {data['id']}: {data['title']}",
+        data['description'],
+        "Fields:",
+        f"\t- observation: Unit of Measure \"{obs['unit']}\", Max {obs['max']}, Min {obs['min']}"
+    ]
+    
+    for name, dim in sorted(data["dimensions"].items()):
+        description = dimension_description(name, dim, max_dim_items)
+        buffer.append(f"\t- {description}")
+
+    return '\n'.join(buffer)
+
+
 def preprocess_dataset(dataset):
     dataset_dir = path.dirname(dataset['data'])
     
@@ -142,22 +194,28 @@ def preprocess_dataset(dataset):
             'values': values[field]
         }
 
-    dataset_information = {
+    information = {
         'id': dataset['id'],
         'title': metadata['title'],
         'description': metadata['description'],
-        'version': metadata['latest_version_metadata']['version'],
         'observation': {
-            'field': observation,
-            'min': obs_min,
-            'max': obs_max,
-            'unit': metadata.get('unit_of_measure', 'Number')
-        },
+                'field': observation,
+                'min': obs_min,
+                'max': obs_max,
+                'unit': metadata.get('unit_of_measure', 'Number')
+            },
         'dimensions': dimensions,
     }
-
+    
     # Save the dataset information
-    json.dump(dataset_information, open(dataset_path, 'w'), indent=4)
+    json.dump({
+        'namespace': 'ons',
+        'id': dataset['id'],
+        'title': metadata['title'],
+        'version': metadata['latest_version_metadata']['version'],
+        'indexing-description': metadata_to_description(information, max_dim_items=2),
+        'usage-description': metadata_to_description(information, max_dim_items=20)
+    }, open(dataset_path, 'w'), indent=4)
     
     # Keep only the selected columns 
     df = df[list(columns)]

@@ -1,7 +1,5 @@
 from strands import tool
 
-from aws_data_analyst.datasets import metadata_to_description
-
 
 DATASET_RETRIEVAL_TOPK = 3
 
@@ -25,7 +23,7 @@ class DatasetSearch:
             result = ["ONS Datasets:"]
             for dataset in datasets['entries']:
                 metadata = self.datasets_loader.load_metadata(dataset['key'])
-                result.append(metadata_to_description(metadata, max_dim_items=400))
+                result.append(metadata['usage-description'])
             return '\n\n'.join(result)
         
         return search_datasets

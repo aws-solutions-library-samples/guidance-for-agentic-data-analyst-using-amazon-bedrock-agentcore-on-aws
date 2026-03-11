@@ -1,25 +1,20 @@
 import base64
 import tempfile
 import shutil
-from os import path
-from enum import Enum
 
 from strands import Agent
 from strands.models import BedrockModel
 from strands import tool
 
 from json_repair import repair_json
-from diskcache import Cache
 from jinja2 import Template
 
 from aws_data_analyst.python_environment import PythonInterpreter
 from aws_data_analyst.datasets_db import DatasetsDB
-from aws_data_analyst.datasets import metadata_to_description
 from aws_data_analyst.dataset_search_tool import DatasetSearch
 from aws_data_analyst.bedrock_models import MODELS, DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
+from aws_data_analyst.cloud_datasets import CloudDatasetLoader
 
-
-CACHE = Cache("/tmp/.cache/DataAnalystAgent")
 
 DATASET_RETRIEVAL_TOPK = 3
 
@@ -76,25 +71,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # ONS Dataset Query
-{{QUERY_HANDLER}}
-""")
-
-CODE_LOCAL_QUERY_HANDLER = """
-from aws_data_analyst.datasets import LocalQueryHandler
-
-query_handler = LocalQueryHandler()
-"""
-
-CODE_CLOUD_QUERY_HANDLER = """
 from aws_data_analyst.cloud_datasets import CloudQueryHandler
 
 query_handler = CloudQueryHandler()
-"""
-
-
-class ResourceLocation(Enum):
-    LOCAL = "local"
-    CLOUD = "cloud" 
+""")
 
 
 @tool
@@ -112,24 +92,13 @@ class DataAnalystAgent:
     def __init__(self,
                  model_id=DEFAULT_MODEL_ID,
                  temperature=DEFAULT_TEMPERATURE,
-                 resource_location=ResourceLocation.CLOUD,
                  history=None):
         self.model_id = model_id
         self.temperature = temperature
         self.cost = MODELS[model_id]['cost']
 
-        if resource_location == ResourceLocation.CLOUD:
-            from aws_data_analyst.cloud_datasets import CloudDatasetLoader
-            self.datasets_loader = CloudDatasetLoader()
-
-            code_preamble = CODE_PREAMBLE.render(QUERY_HANDLER=CODE_CLOUD_QUERY_HANDLER)
-        
-        elif resource_location == ResourceLocation.LOCAL:
-            from aws_data_analyst.datasets import LocalDatasetLoader
-            self.datasets_loader = LocalDatasetLoader()
-
-            code_preamble = CODE_PREAMBLE.render(QUERY_HANDLER=CODE_LOCAL_QUERY_HANDLER)
-        
+        self.datasets_loader = CloudDatasetLoader()
+        code_preamble = CODE_PREAMBLE.render()
 
         self.tmp_dir = tempfile.mkdtemp(prefix='data_analyst_', dir='/tmp')
         self.python_repl = PythonInterpreter(code_preamble)
@@ -167,14 +136,6 @@ class DataAnalystAgent:
         except:
             pass
 
-    def __cache_key(self, prompt):
-        return str([
-            ("model_id", self.model_id),
-            ("temperature", self.temperature),
-            ("system_prompt", self.prompt_template_prototype),
-            ("prompt", prompt),
-        ])
-
     def prepare_prompt(self, query, datasets=None):
         if datasets is None:
             datasets = self.datasets_db.search_entries(query, topK=DATASET_RETRIEVAL_TOPK)
@@ -184,7 +145,7 @@ class DataAnalystAgent:
             prompt_buffer.append("\nThe following are ONS datasets whose descriptions are semantically similar to this query:")
             for dataset in datasets['entries']:
                 metadata = self.datasets_loader.load_metadata(dataset['key'])
-                prompt_buffer.append(metadata_to_description(metadata, max_dim_items=400))
+                prompt_buffer.append(metadata['usage-description'])
         return '\n'.join(prompt_buffer)
 
     def on_demand_cost(self, metrics):
@@ -211,87 +172,45 @@ class DataAnalystAgent:
                 datasets.append({
                     'key': dataset,
                     'title': metadata['title'],
-                    'description': metadata['description'],
                     'count': count
                 })
             query_metrics['datasets'] = datasets
             response_data['metrics']['query'] = query_metrics
         return response_data
 
-    def handle_message(self, message, datasets=None, cached=True):
-        prompt = self.prepare_prompt(message, datasets=datasets)
-        
-        cache_key = self.__cache_key(prompt)
-        if cached and cache_key in CACHE:
-            return CACHE[cache_key]
-
-        self.python_repl.clear_state()
-        response = self.agent(prompt)
-
-        response_data = self.__post_process_result(response)
-        CACHE[cache_key] = response_data
-        return response_data
-
     async def stream_async(self, message, datasets=None, cached=True):
         prompt = self.prepare_prompt(message, datasets=datasets)
         
-        cache_key = self.__cache_key(prompt)
-        if cached and cache_key in CACHE:
-            yield {
-                'msg_type': 'result',
-                'result': CACHE[cache_key]
-            }
-        else:
-            self.python_repl.clear_state()
-            agent_stream = self.agent.stream_async(prompt)
-            async for event in agent_stream:
-                if 'result' in event:
-                    result = self.__post_process_result(event['result'])
-                    CACHE[cache_key] = result
-                    yield {
-                        'msg_type': 'result',
-                        'result': result
-                    }
-                elif 'message' in event:
-                    for content in event['message']['content']:
-                        if 'text' in content:
-                            yield {"msg_type": "text", "text": content['text']}
+        self.python_repl.clear_state()
+        agent_stream = self.agent.stream_async(prompt)
+        async for event in agent_stream:
+            if 'result' in event:
+                yield {
+                    'msg_type': 'result',
+                    'result': self.__post_process_result(event['result'])
+                }
+            elif 'message' in event:
+                for content in event['message']['content']:
+                    if 'text' in content:
+                        yield {"msg_type": "text", "text": content['text']}
+                    
+                    elif 'toolUse' in content:
+                        toolUse = content['toolUse']
+                        self.tool_uses[toolUse['toolUseId']] = toolUse['name']
+                        toolUse["msg_type"] = "toolUse"
+
+                        if toolUse['name'] == 'visualize_image':
+                            with open(toolUse['input']['image_path'], 'rb') as f:
+                                toolUse['image'] = base64.b64encode(f.read()).decode('utf-8')
                         
-                        elif 'toolUse' in content:
-                            toolUse = content['toolUse']
-                            self.tool_uses[toolUse['toolUseId']] = toolUse['name']
-                            toolUse["msg_type"] = "toolUse"
-
-                            if toolUse['name'] == 'visualize_image':
-                                with open(toolUse['input']['image_path'], 'rb') as f:
-                                    toolUse['image'] = base64.b64encode(f.read()).decode('utf-8')
-                            
-                            yield toolUse
+                        yield toolUse
+                    
+                    elif 'toolResult' in content:
+                        toolResult = content['toolResult']
+                        toolResult['name'] = self.tool_uses[toolResult['toolUseId']]
                         
-                        elif 'toolResult' in content:
-                            toolResult = content['toolResult']
-                            toolResult['name'] = self.tool_uses[toolResult['toolUseId']]
-                            
-                            if toolResult['name'] == 'visualize_image':
-                                continue
+                        if toolResult['name'] == 'visualize_image':
+                            continue
 
-                            toolResult["msg_type"] = "toolResult"
-                            yield toolResult
-
-
-if __name__ == "__main__":
-    from argparse import ArgumentParser
-    import asyncio
-
-    parser = ArgumentParser()
-    parser.add_argument('query')
-    args = parser.parse_args()
-
-    agent = DataAnalystAgent(resource_location=ResourceLocation.CLOUD)
-
-    async def process_streaming_response():
-        agent_stream = agent.stream_async(args.query, cached=False)
-        async for msg in agent_stream:
-            print(f"\n\nMESSAGE: {msg}")
-
-    asyncio.run(process_streaming_response())
+                        toolResult["msg_type"] = "toolResult"
+                        yield toolResult

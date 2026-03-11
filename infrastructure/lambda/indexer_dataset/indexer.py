@@ -39,36 +39,6 @@ def extract_dataset_id(s3_key: str) -> Optional[str]:
     return None
 
 
-def dimension_description(name, data, max_dim_items):
-    values = sorted(data['values'].keys())
-    if len(values) <= max_dim_items:
-        values_str = ", ".join([f'"{v}"' for v in values])
-    else:
-        index = max_dim_items // 2
-        start = ", ".join([f'"{v}"' for v in values[:index]])
-        index *= -1
-        end = ", ".join([f'"{v}"' for v in values[index:]])
-        values_str = f"{start}, ..., {end}"
-    return f"{name}: {data['label']}. Possible values: {values_str}."
-
-
-def metadata_to_description(data, max_dim_items=20):
-    obs = data['observation']
-
-    buffer = [
-        f"[ID: {data['id']}] {data['title']}",
-        data['description'],
-        "Fields:",
-        f"\t- observation: Unit of Measure \"{obs['unit']}\", Max {obs['max']}, Min {obs['min']}"
-    ]
-    
-    for name, dim in sorted(data["dimensions"].items()):
-        description = dimension_description(name, dim, max_dim_items)
-        buffer.append(f"\t- {description}")
-
-    return '\n'.join(buffer)
-
-
 def load_metadata(bucket: str, key: str):
     try:
         # Download metadata file from S3
@@ -116,8 +86,7 @@ def lambda_handler(event, context):
 
                 logger.info(f"Processing dataset: {dataset_id}")
                 metadata = load_metadata(bucket, key)
-                description = metadata_to_description(metadata)
-                db.add_entry(dataset_id, description)
+                db.add_entry(dataset_id, metadata['indexing-description'])
                 logger.info(f"Successfully processed {dataset_id}")
             except S3AccessError as e:
                 error_msg = f"S3 access error for dataset_id={dataset_id}, s3://{bucket}/{key}: {str(e)}"

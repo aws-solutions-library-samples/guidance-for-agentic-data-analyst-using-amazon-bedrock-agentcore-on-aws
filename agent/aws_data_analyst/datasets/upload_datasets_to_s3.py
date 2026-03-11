@@ -8,8 +8,8 @@ import boto3
 from botocore.exceptions import ClientError
 
 from aws_data_analyst import DATASETS_DIR
-from aws_data_analyst.datasets import iterate_datasets
 from aws_data_analyst.infrastructure import S3_DATA_BUCKET
+from aws_data_analyst.datasets import DATASETS
 
 
 s3_client = boto3.client('s3')
@@ -27,7 +27,6 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
     Upload a single file to S3.
     
     Args:
-        s3_client: Boto3 S3 client
         local_file: Path to local file
         s3_key: S3 key for the file
         content_type: Content type for the file
@@ -67,29 +66,45 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
         return UploadStatus.FAILED
 
 
-def upload_dataset(dataset_id):
-    dataset_dir = DATASETS_DIR / dataset_id
-
+def upload_dataset(dataset):
     parquet_status = upload_file_to_s3(
-        dataset_dir / "data.parquet",
-        f"datasets/{dataset_id}/data.parquet", 
+        dataset['data_file'],
+        f"datasets/{dataset['id']}/data.parquet", 
         'application/octet-stream'
     )
     metadata_status = upload_file_to_s3(
-        dataset_dir / "dataset.json",
-        f"metadata/{dataset_id}/dataset.json", 
+        dataset['metadata_file'],
+        f"metadata/{dataset['id']}/dataset.json", 
         'application/json'
     )
 
     return parquet_status, metadata_status
 
 
+def iterate_datasets():
+    for namespace in DATASETS:
+        namespace_dir = DATASETS_DIR / namespace
+        for dataset_dir in namespace_dir.iterdir():
+            if not dataset_dir.is_dir():
+                continue
+
+            data_file = dataset_dir / "data.parquet"
+            metadata_file = dataset_dir / "dataset.json"
+            if data_file.exists() and metadata_file.exists():
+                yield {
+                    "namespace": namespace,
+                    "id": dataset_dir.name,
+                    "data_file": data_file,
+                    "metadata_file": metadata_file
+                }
+
+
 def upload_datasets():
     datasets = list(iterate_datasets())
     parquet_files, metadata_files = Counter(), Counter()
     for i, dataset in enumerate(datasets, 1):
-        logger.info(f"# DATASET {i}/{len(datasets)}: {dataset['id']}")
-        parquet_status, metadata_status = upload_dataset(dataset['id'])
+        logger.info(f"# DATASET {i}/{len(datasets)}: {dataset['namespace']}.{dataset['id']}")
+        parquet_status, metadata_status = upload_dataset(dataset)
         parquet_files[parquet_status] += 1
         metadata_files[metadata_status] += 1
     

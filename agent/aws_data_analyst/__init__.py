@@ -1,3 +1,3 @@
 from pathlib import Path
 
-DATASETS_DIR =  Path.home() / 'workspace' / 'data' / 'ons'
+DATASETS_DIR =  Path.home() / 'workspace' / 'data'

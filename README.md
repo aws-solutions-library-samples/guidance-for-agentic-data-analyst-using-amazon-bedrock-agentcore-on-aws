@@ -71,9 +71,9 @@ The following table provides a sample cost breakdown for deploying this Guidance
 1. Install packages in requirements using command ```pip install -r requirements.txt```
 2. From the `infrastructure` directory, deploy the stack with the CDK command: ```cdk deploy --all``` 
 3. From the `agent` directory, run the scripts to deploy the the `337` ONS datasets:
-   1. Download the datasets: ```python aws_data_analyst/download_datasets.py```
-   2. Preprocess the datasets: ```python aws_data_analyst/preprocess_datasets.py```
-   3. Upload the datasets to S3: ```python aws_data_analyst/upload_datasets_to_s3.py```
+   1. Download the datasets: ```python aws_data_analyst/datasets/ons/download_datasets.py```
+   2. Preprocess the datasets: ```python aws_data_analyst/datasets/ons/preprocess_datasets.py```
+   3. Upload the datasets to S3: ```python aws_data_analyst/datasets/upload_datasets_to_s3.py```
 
 To grant access to the demo Web-App you will need to create a user in the WebApp `Cognito` User Pool:
 1. Open the AWS console and go to the Cognito service page and select the `DataAnalystWebAppUserPool*` user-pool.
