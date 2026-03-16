@@ -70,3 +70,29 @@ class DatasetsDB:
             'entries': response['vectors'],
             'metrics': metrics
         }
+    
+    def delete_entry(self, key):
+        self.s3vectors.delete_vectors(
+            vectorBucketName=self.vector_bucket,
+            indexName=self.index_name,
+            keys=[
+                key,
+            ]
+        )
+
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("--delete", type=str, default=None)
+    parser.add_argument("--search", type=str, default=None)
+    args = parser.parse_args()
+
+    db = DatasetsDB()
+    if args.search:
+        print(f"Searching: {args.search}")
+        print(db.search_entries(args.search))
+    if args.delete:
+        print(f"Deleting: {args.delete}")
+        db.delete_entry(args.delete)
