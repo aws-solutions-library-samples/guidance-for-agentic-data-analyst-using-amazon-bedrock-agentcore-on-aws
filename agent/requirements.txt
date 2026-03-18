@@ -11,5 +11,8 @@ s3fs==0.4.2
 # Used by the Agent for the data-analysis code
 numpy==1.26.4
 pandas==2.2.3
+scipy==1.17.1
+
+# Visualization
 matplotlib==3.10.7
 seaborn==0.13.2

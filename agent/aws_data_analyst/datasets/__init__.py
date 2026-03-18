@@ -3,6 +3,7 @@ import re
 
 DATASETS = [
     'ons',
+    'oecd',
 ]
 
 
