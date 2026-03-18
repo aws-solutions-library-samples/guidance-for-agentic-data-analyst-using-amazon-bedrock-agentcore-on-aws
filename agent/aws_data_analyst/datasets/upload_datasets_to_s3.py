@@ -70,12 +70,12 @@ def upload_file_to_s3(local_file, s3_key, content_type, override=False) -> Uploa
 def upload_dataset(dataset, override_metadata=False):
     parquet_status = upload_file_to_s3(
         dataset['data_file'],
-        f"datasets/{dataset['id']}/data.parquet", 
+        f"datasets/{dataset['namespace']}/{dataset['id']}/data.parquet", 
         'application/octet-stream'
     )
     metadata_status = upload_file_to_s3(
         dataset['metadata_file'],
-        f"metadata/{dataset['id']}/dataset.json", 
+        f"metadata/{dataset['namespace']}/{dataset['id']}/dataset.json", 
         'application/json',
         override=override_metadata
     )

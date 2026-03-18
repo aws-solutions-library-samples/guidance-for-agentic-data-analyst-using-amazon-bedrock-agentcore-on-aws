@@ -4,10 +4,10 @@ Triggered by S3 PUT events for .parquet files in the datasets/ prefix.
 
 This function:
 1. Parses S3 events to extract bucket and object key
-2. Extracts dataset_id from the S3 path (e.g., datasets/TS051/data.parquet → TS051)
+2. Extracts namespace and dataset_id from the S3 path (e.g., datasets/economy/TS051/data.parquet → economy, TS051)
 3. Reads Parquet schema using PyArrow without loading data
 4. Maps PyArrow types to Glue/Athena types
-5. Generates table name following convention: dataset_{id}
+5. Generates table name following convention: dataset_{namespace}_{id}
 6. Creates or updates Glue table with extracted schema
 """
 import json
@@ -75,22 +75,21 @@ def parse_s3_event(record: Dict[str, Any]) -> tuple[str, str]:
         raise ValueError(f"Malformed S3 event record: missing key {e}")
 
 
-def extract_dataset_id(s3_key: str) -> Optional[str]:
+def extract_dataset_info(s3_key: str) -> Optional[tuple[str, str]]:
     """
-    Extract dataset_id from S3 key path (legacy function for backward compatibility).
+    Extract namespace and dataset_id from S3 key path.
     
-    Expected format: datasets/TS051/data.parquet → TS051
+    Expected format: datasets/{namespace}/{dataset_id}/data.parquet
     
     Args:
         s3_key: S3 object key
         
     Returns:
-        Dataset ID or None if pattern doesn't match
+        Tuple of (namespace, dataset_id) or None if pattern doesn't match
     """
-    # Pattern: datasets/{dataset_id}/data.parquet
-    match = re.match(r'^datasets/([^/]+)/data\.parquet$', s3_key)
+    match = re.match(r'^datasets/([^/]+)/([^/]+)/data\.parquet$', s3_key)
     if match:
-        return match.group(1)
+        return match.group(1), match.group(2)
     return None
 
 
@@ -226,14 +225,15 @@ def map_pyarrow_to_glue_type(arrow_type) -> str:
         return 'string'
 
 
-def generate_table_name(dataset_id: str) -> str:
+def generate_table_name(namespace: str, dataset_id: str) -> str:
     """
-    Generate Glue table name from dataset_id.
+    Generate Glue table name from namespace and dataset_id.
     
     Converts to lowercase and prefixes with "dataset_".
-    Example: TS051 → dataset_ts051
+    Example: (economy, TS051) → dataset_economy_ts051
     
     Args:
+        namespace: Dataset namespace
         dataset_id: Dataset identifier
         
     Returns:
@@ -242,8 +242,7 @@ def generate_table_name(dataset_id: str) -> str:
     Raises:
         ValueError: If table name doesn't follow Glue naming rules
     """
-    # Convert to lowercase
-    table_name = f"dataset_{dataset_id.lower()}"
+    table_name = f"dataset_{namespace.lower()}_{dataset_id.lower()}"
     
     # Replace hyphens with underscores for Glue compatibility
     table_name = table_name.replace('-', '_')
@@ -535,24 +534,24 @@ def lambda_handler(event, context):
                     logger.warning(f"Skipping non-Parquet file: {key}")
                     continue
                 
-                # Fall back to legacy non-versioned path
-                dataset_id = extract_dataset_id(key)
-                if not dataset_id:
-                    logger.warning(f"Could not extract dataset_id from key: {key}")
+                dataset_info = extract_dataset_info(key)
+                if not dataset_info:
+                    logger.warning(f"Could not extract dataset info from key: {key}")
                     results.append({
                         'status': 'skipped',
                         'reason': 'invalid_path',
                         's3_key': key
                     })
                     continue
-                logger.info(f"Processing dataset: {dataset_id}")
+                namespace, dataset_id = dataset_info
+                logger.info(f"Processing dataset: {namespace}/{dataset_id}")
                 
                 # Extract Parquet schema
                 columns = extract_parquet_schema(bucket, key)
                 logger.info(f"Extracted {len(columns)} columns from Parquet schema")
                 
                 # Generate table name
-                table_name = generate_table_name(dataset_id)
+                table_name = generate_table_name(namespace, dataset_id)
                 
                 # Create or update Glue table
                 dataset_folder = '/'.join(key.split('/')[:-1]) + '/'

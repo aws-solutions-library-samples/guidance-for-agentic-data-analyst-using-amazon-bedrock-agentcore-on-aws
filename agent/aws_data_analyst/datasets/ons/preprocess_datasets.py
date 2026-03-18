@@ -130,7 +130,8 @@ def metadata_to_description(data, max_dim_items=20):
     description = '\n'.join(description_buffer)
 
     return standard_dataset_decription(
-        data['id'], data['url'],
+        f"{data['namespace']}.{data['id']}",
+        data['url'],
         f"UK Office for National Statistics Dataset - {data['title']}",
         description)
 
@@ -198,9 +199,10 @@ def preprocess_dataset(dataset):
         }
 
     information = {
+        'namespace': 'ons',
         'id': dataset['id'],
         'title': metadata['title'],
-        'url': f"https://www.ons.gov.uk/datasets/{dataset['id']}",
+        'url': f"https://www.ons.gov.uk/datasets/{metadata['id']}",
         'description': metadata['description'],
         'observation': {
                 'field': observation,
@@ -213,6 +215,7 @@ def preprocess_dataset(dataset):
     
     # Save the dataset information
     json.dump({
+        'original-id': metadata['id'],
         'namespace': 'ons',
         'id': dataset['id'],
         'title': metadata['title'],

@@ -30,8 +30,8 @@ async def invoke(payload):
         'datasets': datasets
     }
 
-    ons_agent = DataAnalystAgent(model_id=model_id, history=history)
-    async for msg in ons_agent.stream_async(user_message, datasets):
+    agent = DataAnalystAgent(model_id=model_id, history=history)
+    async for msg in agent.stream_async(user_message, datasets):
         yield msg
 
 

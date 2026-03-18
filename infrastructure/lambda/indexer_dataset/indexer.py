@@ -32,10 +32,10 @@ def parse_s3_event(record: Dict[str, Any]) -> tuple[str, str]:
 
 
 def extract_dataset_id(s3_key: str) -> Optional[str]:
-    # Pattern: metadata/{dataset_id}/dataset.json
-    match = re.match(r'^metadata/([^/]+)/dataset\.json$', s3_key)
+    # Pattern: metadata/{namespace}/{dataset_id}/dataset.json
+    match = re.match(r'^metadata/([^/]+)/([^/]+)/dataset\.json$', s3_key)
     if match:
-        return match.group(1)
+        return f"{match.group(1)}.{match.group(2)}"
     return None
 
 

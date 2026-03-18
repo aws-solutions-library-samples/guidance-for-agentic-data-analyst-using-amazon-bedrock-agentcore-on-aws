@@ -18,11 +18,11 @@ from aws_data_analyst.cloud_datasets import CloudDatasetLoader
 
 DATASET_RETRIEVAL_TOPK = 3
 
-SYSTEM_PROMPT_TEMPLATE = Template("""You are an expert data-analyst answering user queries based on the Office for National Statistics (ONS) datasets.
+SYSTEM_PROMPT_TEMPLATE = Template("""You are an expert data-analyst answering user queries based on the available datasets.
 You can use the python_repl tool to execute python code fetching data, and performing additional data processing with the pandas library.
 
-Your answer has to be grounded on an ONS dataset.
-If you cannot find a suitable ONS dataset to ground your question, set "supported_by_data" to `false` and explain in the answer text about the lack of a suitable ONS dataset.
+Your answer has to be grounded on a dataset.
+If you cannot find a suitable dataset to ground your question, set "supported_by_data" to `false` and explain in the answer text about the lack of a suitable dataset.
 
 Do not try to show any matplotlib/seaborn images: the python_repl tool executes the code in a sub-process without a GUI.
 If you need to generate a file use this temporary directory: {{TEMP_DIR}}
@@ -30,7 +30,7 @@ The user has no access to this directory.
 If you want to show an image to the user invoke the `visualize_image` tool.
 
 For each user query you will be provided with a set of datasets whose description is semantically similar to the given query.
-You can search additional ONS datasets with the `search_datasets` tool.
+You can search additional datasets with the `search_datasets` tool.
 For example, a more generic dataset can contain specific information about the user query once you apply a filter on its dimensions.
 
 You should return a JSON object with the following format:
@@ -42,9 +42,9 @@ You should return a JSON object with the following format:
 The python environment of the python_repl tool was initialised with the following code (you do not need to rewrite this code):
 {{CODE_PREAMBLE}}
 
-To load an ONS dataset by Dataset-ID into a pandas dataframe, use the following code:
+To load a dataset by Dataset-ID into a pandas dataframe, use the following code:
 ```python
-df = query_handler.query_ons_dataset('Dataset-ID', {'dimension-name-1': 'value-1', ... , 'dimension-name-n': 'value-n'})
+df = query_handler.query_dataset('Dataset-ID', {'dimension-name-1': 'value-1', ... , 'dimension-name-n': 'value-n'})
 ```
 
 Pay attention to these guidelines:
@@ -70,7 +70,7 @@ matplotlib.use('Agg')  # Use non-interactive backend
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# ONS Dataset Query
+# Dataset Query
 from aws_data_analyst.cloud_datasets import CloudQueryHandler
 
 query_handler = CloudQueryHandler()
@@ -142,7 +142,7 @@ class DataAnalystAgent:
             
         prompt_buffer = [f"User Query: {query}"]
         if datasets:
-            prompt_buffer.append("\nThe following are ONS datasets whose descriptions are semantically similar to this query:")
+            prompt_buffer.append("\nThe following are datasets whose descriptions are semantically similar to this query:")
             for dataset in datasets['entries']:
                 metadata = self.datasets_loader.load_metadata(dataset['key'])
                 prompt_buffer.append(metadata['usage-description'])

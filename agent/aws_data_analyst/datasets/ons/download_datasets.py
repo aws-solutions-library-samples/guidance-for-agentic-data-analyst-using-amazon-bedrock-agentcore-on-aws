@@ -8,6 +8,8 @@ import requests
 from tqdm import tqdm
 
 from aws_data_analyst.datasets.ons import ONS_DATASETS
+from aws_data_analyst.datasets import normalize_dataset_id
+
 
 ROOT_URL = "https://api.beta.ons.gov.uk/v1/"
 EIGTH_KB = 8 * 1024
@@ -94,7 +96,9 @@ def data_exists(data_path, metdata):
 
 
 def ons_download_dataset(dataset):
-    dataset_dir = ONS_DATASETS / dataset['id']
+    dataset_id = normalize_dataset_id(dataset['id'])
+
+    dataset_dir = ONS_DATASETS / dataset_id
     makedirs(dataset_dir, exist_ok=True)
     
     metadata_path = dataset_dir / 'metadata.json'

@@ -65,7 +65,8 @@ def run_athena_query(query):
 
 
 def athena_query(dataset_id, dimension_filters=None, limit=None):
-    table_name = f"dataset_{dataset_id.replace('-', '_')}"
+    namespace, ds_id = dataset_id.split('.', 1)
+    table_name = f"dataset_{namespace}_{ds_id.replace('-', '_')}"
     query = f"SELECT * FROM {table_name}"
     if dimension_filters:
         where_clauses = []
