@@ -24,6 +24,7 @@ async def invoke(payload):
     for dataset in datasets['entries']:
         metadata = datasets_loader.load_metadata(dataset['key'])
         dataset['title'] = metadata['title']
+        dataset['url'] = metadata['url']
     yield {
         'msg_type': 'datasets',
         'datasets': datasets

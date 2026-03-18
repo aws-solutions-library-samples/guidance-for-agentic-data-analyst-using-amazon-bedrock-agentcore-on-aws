@@ -7,6 +7,7 @@ from tqdm import tqdm
 import pandas as pd
 
 from aws_data_analyst.datasets.ons import ONS_DATASETS
+from aws_data_analyst.datasets import standard_dataset_decription
 
 
 OBSERVATION_PATTERN = re.compile(r"[vV]4_\d")
@@ -118,18 +119,20 @@ def dimension_description(name, data, max_dim_items):
 def metadata_to_description(data, max_dim_items=20):
     obs = data['observation']
 
-    buffer = [
-        f"UK Office for National Statistics Dataset ID {data['id']}: {data['title']}",
+    description_buffer = [
         data['description'],
         "Fields:",
         f"\t- observation: Unit of Measure \"{obs['unit']}\", Max {obs['max']}, Min {obs['min']}"
     ]
-    
     for name, dim in sorted(data["dimensions"].items()):
         description = dimension_description(name, dim, max_dim_items)
-        buffer.append(f"\t- {description}")
+        description_buffer.append(f"\t- {description}")
+    description = '\n'.join(description_buffer)
 
-    return '\n'.join(buffer)
+    return standard_dataset_decription(
+        data['id'], data['url'],
+        f"UK Office for National Statistics Dataset - {data['title']}",
+        description)
 
 
 def preprocess_dataset(dataset):
@@ -197,6 +200,7 @@ def preprocess_dataset(dataset):
     information = {
         'id': dataset['id'],
         'title': metadata['title'],
+        'url': f"https://www.ons.gov.uk/datasets/{dataset['id']}",
         'description': metadata['description'],
         'observation': {
                 'field': observation,
@@ -213,6 +217,7 @@ def preprocess_dataset(dataset):
         'id': dataset['id'],
         'title': metadata['title'],
         'version': metadata['latest_version_metadata']['version'],
+        'url': information['url'],
         'indexing-description': metadata_to_description(information, max_dim_items=2),
         'usage-description': metadata_to_description(information, max_dim_items=20)
     }, open(dataset_path, 'w'), indent=4)

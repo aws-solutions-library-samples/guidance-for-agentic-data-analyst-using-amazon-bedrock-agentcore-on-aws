@@ -53,9 +53,9 @@ export async function* streamAgentInvoke(
           const entries = event.datasets?.entries;
           if (entries?.length) {
             const text = entries.map((d: any) =>
-              `* 📊 [${d.key}](https://www.ons.gov.uk/datasets/${d.key}): ${d.title}`
+              `* 📊 [${d.key}](${d.url}): ${d.title}`
             ).join('\n');
-            yield { type: 'text', content: `Relevant ONS Datasets:\n${text}` };
+            yield { type: 'text', content: `Relevant Datasets:\n${text}` };
           }
 
         } else if (event.msg_type === 'text' && event.text) {
@@ -76,14 +76,9 @@ export async function* streamAgentInvoke(
           }
 
         } else if (event.msg_type === 'toolResult' && event.name === 'search_datasets') {
-          const lines = (event.content || [])
-            .flatMap((r: any) => (r.text || '').split('\n'))
-            .filter((l: string) => l.startsWith('[ID: '))
-            .map((l: string) => {
-              const m = l.match(/^\[ID: (.+?)\] (.+)$/);
-              return m ? ` * 📊 [${m[1]}](https://www.ons.gov.uk/datasets/${m[1]}): ${m[2]}` : ` * 📊 ${l}`;
-            });
-          if (lines.length) yield { type: 'text', content: `ONS Datasets relevant to the Agent query:\n${lines.join('\n')}` };
+          const text = (event.content || []).map((r: any) => r.text || '').join('\n');
+          const lines = text.split('\n').filter((l: string) => l.startsWith('# ID [')).map((l: string) => l.replace('# ID', ' * 📊'));
+          if (lines.length) yield { type: 'text', content: `Datasets relevant to the Agent query:\n${lines.join('\n')}` };
 
         } else if (event.msg_type === 'result') {
           const result = event.result;
@@ -95,7 +90,7 @@ export async function* streamAgentInvoke(
             let metricsText = `Metrics:\n * ⏱️ Latency: ${m.total_duration?.toFixed(0)}s\n * 💸 On demand cost: $${m.on_demand_cost?.toFixed(2)}\n * 🔄 Cycles: ${m.total_cycles}`;
             if (result.metrics.query?.datasets?.length) {
               metricsText += '\n\nUsed Datasets:\n' + result.metrics.query.datasets.map(
-                (d: any) => `* 📊 [${d.key}](https://www.ons.gov.uk/datasets/${d.key}): ${d.title}`
+                (d: any) => `* 📊 [${d.key}](${d.url}): ${d.title}`
               ).join('\n');
             }
             yield { type: 'result', content: metricsText };

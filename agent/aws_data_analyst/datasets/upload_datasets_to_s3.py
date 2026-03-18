@@ -22,7 +22,7 @@ class UploadStatus(Enum):
     FAILED = "failed"
 
 
-def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
+def upload_file_to_s3(local_file, s3_key, content_type, override=False) -> UploadStatus:
     """
     Upload a single file to S3.
     
@@ -37,16 +37,17 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
     upload_description = f"Upload {local_file.name} to s3://{S3_DATA_BUCKET}/{s3_key}"
     try:
         # Check if file already exists
-        try:
-            response = s3_client.head_object(Bucket=S3_DATA_BUCKET, Key=s3_key)
-            if response['ContentLength'] == local_file.stat().st_size:
-                logger.info(f"  SKIPPED {upload_description}")
-                return UploadStatus.SKIPPED
-            logger.info(f"  Size mismatch for {s3_key}, re-uploading")
-        except ClientError as e:
-            if e.response.get('Error', {}).get('Code') != '404':
-                logger.error(f"[S3 ERROR] Error checking file existence for {s3_key}: {e}")
-                raise
+        if not override:
+            try:
+                response = s3_client.head_object(Bucket=S3_DATA_BUCKET, Key=s3_key)
+                if response['ContentLength'] == local_file.stat().st_size:
+                    logger.info(f"  SKIPPED {upload_description}")
+                    return UploadStatus.SKIPPED
+                logger.info(f"  Size mismatch for {s3_key}, re-uploading")
+            except ClientError as e:
+                if e.response.get('Error', {}).get('Code') != '404':
+                    logger.error(f"[S3 ERROR] Error checking file existence for {s3_key}: {e}")
+                    raise
         
         # Upload the file
         s3_client.upload_file(
@@ -66,7 +67,7 @@ def upload_file_to_s3(local_file, s3_key, content_type) -> UploadStatus:
         return UploadStatus.FAILED
 
 
-def upload_dataset(dataset):
+def upload_dataset(dataset, override_metadata=False):
     parquet_status = upload_file_to_s3(
         dataset['data_file'],
         f"datasets/{dataset['id']}/data.parquet", 
@@ -75,14 +76,18 @@ def upload_dataset(dataset):
     metadata_status = upload_file_to_s3(
         dataset['metadata_file'],
         f"metadata/{dataset['id']}/dataset.json", 
-        'application/json'
+        'application/json',
+        override=override_metadata
     )
 
     return parquet_status, metadata_status
 
 
-def iterate_datasets():
+def iterate_datasets(target_namespace=None):
     for namespace in DATASETS:
+        if target_namespace is not None and namespace != target_namespace:
+            continue
+
         namespace_dir = DATASETS_DIR / namespace
         for dataset_dir in namespace_dir.iterdir():
             if not dataset_dir.is_dir():
@@ -99,12 +104,12 @@ def iterate_datasets():
                 }
 
 
-def upload_datasets():
-    datasets = list(iterate_datasets())
+def upload_datasets(namespace=None, override_metadata=False):
+    datasets = list(iterate_datasets(namespace))
     parquet_files, metadata_files = Counter(), Counter()
     for i, dataset in enumerate(datasets, 1):
         logger.info(f"# DATASET {i}/{len(datasets)}: {dataset['namespace']}.{dataset['id']}")
-        parquet_status, metadata_status = upload_dataset(dataset)
+        parquet_status, metadata_status = upload_dataset(dataset, override_metadata)
         parquet_files[parquet_status] += 1
         metadata_files[metadata_status] += 1
     
@@ -120,5 +125,10 @@ if __name__ == "__main__":
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument("--namespace")
+    parser.add_argument("--metadata", default=False, action="store_true")
+    args = parser.parse_args()
 
-    upload_datasets()
+    upload_datasets(args.namespace, args.metadata)

@@ -172,6 +172,7 @@ class DataAnalystAgent:
                 datasets.append({
                     'key': dataset,
                     'title': metadata['title'],
+                    'url': metadata['url'],
                     'count': count
                 })
             query_metrics['datasets'] = datasets

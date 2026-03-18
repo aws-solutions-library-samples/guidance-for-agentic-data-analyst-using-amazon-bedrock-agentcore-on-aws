@@ -13,14 +13,14 @@ class DatasetSearch:
         @tool
         def search_datasets(query):
             """
-            Discover ONS datasets relevant to a given query.
-
+            Discover datasets relevant to a given query.
+            
             Args:
-                query: The query for the ONS dataset
+                query: The query for the dataset
             """
             datasets = self.datasets_db.search_entries(query, topK=DATASET_RETRIEVAL_TOPK)
             
-            result = ["ONS Datasets:"]
+            result = ["Datasets:"]
             for dataset in datasets['entries']:
                 metadata = self.datasets_loader.load_metadata(dataset['key'])
                 result.append(metadata['usage-description'])
