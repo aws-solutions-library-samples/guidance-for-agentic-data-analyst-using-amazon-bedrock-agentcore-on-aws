@@ -220,6 +220,7 @@ def preprocess_dataset(dataset):
         'id': dataset['id'],
         'title': metadata['title'],
         'version': metadata['latest_version_metadata']['version'],
+        'description': metadata['description'],
         'url': information['url'],
         'indexing-description': metadata_to_description(information, max_dim_items=2),
         'usage-description': metadata_to_description(information, max_dim_items=20)

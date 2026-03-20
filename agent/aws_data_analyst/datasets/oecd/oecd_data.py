@@ -19,6 +19,7 @@ import json
 import time
 import logging
 from io import StringIO
+from typing import Optional
 
 import requests
 import pandas as pd
@@ -35,10 +36,6 @@ from aws_data_analyst.datasets import standard_dataset_decription
 # ---------------------------------------------------------------------------
 BASE_URL = "https://sdmx.oecd.org/public/rest"
 LOG_LEVEL = logging.INFO
-
-REQUEST_TIMEOUT = 120     # seconds per HTTP request
-MAX_RETRIES = 3
-RETRY_BACKOFF = 5         # seconds
 
 # SDMX namespaces (Clark notation)
 NS_STR = "http://www.sdmx.org/resources/sdmxml/schemas/v2_1/structure"
@@ -85,31 +82,41 @@ def text_en(parent: ET.Element, clark_tag: str, fallback: str = "") -> str:
 # ---------------------------------------------------------------------------
 # HTTP helpers
 # ---------------------------------------------------------------------------
-def http_get(url: str, params: dict = None,
+REQUEST_TIMEOUT = 120     # seconds per HTTP request
+MAX_RETRIES = 3
+RETRY_BACKOFF = 2         # seconds
+
+
+def wait_before_retry(attempt):
+    wait = RETRY_BACKOFF * (2 ** (attempt - 1))
+    log.warning(f"Retrying in {wait}s")
+    time.sleep(wait)
+
+
+def http_get(url: str, params: Optional[dict] = None,
              accept: str = "application/xml") -> requests.Response | None:
     """GET with retries."""
-    headers = {"Accept": accept}
+    headers = {
+        "Accept": accept,
+        "User-Agent": "oecd-data-downloader/1.0"
+    }
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            resp = requests.get(url, params=params, headers=headers,
-                                timeout=REQUEST_TIMEOUT)
+            resp = requests.get(url, params=params, headers=headers, timeout=REQUEST_TIMEOUT)
             if resp.status_code == 200:
                 return resp
-            if resp.status_code == 404:
+            elif resp.status_code == 404:
                 log.warning("404 Not Found: %s", url)
                 return None
-            if resp.status_code == 429 or resp.status_code >= 500:
+            elif resp.status_code == 429 or resp.status_code >= 500:
                 log.warning(f"Too Many Requests: {resp.headers}")
-                wait = RETRY_BACKOFF * attempt
-                log.warning(f"Retrying in {wait}s")
-                time.sleep(wait)
+                wait_before_retry(attempt)
                 continue
             log.warning("HTTP %s: %s", resp.status_code, url)
             return None
         except requests.RequestException as exc:
-            log.warning("Request error (%s) attempt %d/%d: %s",
-                        exc, attempt, MAX_RETRIES, url)
-            time.sleep(RETRY_BACKOFF * attempt)
+            log.warning(f"Request error ({exc}) attempt {attempt}/{MAX_RETRIES}: {url}")
+            wait_before_retry(attempt)
     log.error("Giving up after %d attempts: %s", MAX_RETRIES, url)
     return None
 
@@ -284,9 +291,9 @@ def dimension_description(name, data, max_dim_items):
     return f"{name}: {data['dimension-description']}.{values_str}"
 
 
-def metadata_to_description(flow, metadata, dimensions, max_dim_items):
+def metadata_to_description(metadata, dimensions, max_dim_items):
     description_buffer = [
-        flow['description'],
+        metadata['description'],
         "Dimensions:",
     ]
     for name, dim in sorted(dimensions.items()):
@@ -335,7 +342,7 @@ def oecd_explorer_url(dataset_id: str, agency_id: str, version: str) -> str:
 # ---------------------------------------------------------------------------
 # Per-dataset orchestration
 # ---------------------------------------------------------------------------
-def process_dataset(flow: dict) -> None:
+def process_dataset(flow: dict, save_csv=False) -> None:
     original_id    = flow["id"]
     agency   = flow["agencyID"]
     # Sanitise the dataset id for use as a directory name (@, / etc.)
@@ -350,33 +357,35 @@ def process_dataset(flow: dict) -> None:
     log.info("=== %s -- %s ===", df_id, flow["title"])
 
     # --- metadata ---
-    dimensions: dict = {}
-    dsd_root = fetch_dsd(flow["dsd_agency"], flow["dsd_id"], flow["dsd_version"])
-    if dsd_root is not None:
-        dimensions = parse_dimensions(dsd_root)
-        log.info("  -> %d dimensions", len(dimensions))
+    if json_path.exists():
+        log.info("  -> Metadata exists, skipping")
     else:
-        log.warning("  -> DSD unavailable for %s", df_id)
+        dimensions: dict = {}
+        dsd_root = fetch_dsd(flow["dsd_agency"], flow["dsd_id"], flow["dsd_version"])
+        if dsd_root is not None:
+            dimensions = parse_dimensions(dsd_root)
+            log.info("  -> %d dimensions", len(dimensions))
+        else:
+            log.warning("  -> DSD unavailable for %s", df_id)
 
-    metadata = {
-        'original-id': original_id,
-        "namespace":   "oecd",
-        "id":          df_id,
-        "version":     flow["version"],
-        "title":       flow["title"],
-        'url': oecd_explorer_url(original_id, flow["agencyID"], flow["version"]),
-    }
-    metadata["indexing-description"] = metadata_to_description(flow, metadata, dimensions, max_dim_items=2)
-    metadata["usage-description"] = metadata_to_description(flow, metadata, dimensions, max_dim_items=20)
-
-
-    json_path.write_text(
-        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-    log.info("  -> Metadata -> %s", json_path)
+        metadata = {
+            'original-id': original_id,
+            "namespace":   "oecd",
+            "id":          df_id,
+            "version":     flow["version"],
+            "title":       flow["title"],
+            "description": flow['description'],
+            'url': oecd_explorer_url(original_id, flow["agencyID"], flow["version"]),
+        }
+        metadata["indexing-description"] = metadata_to_description(metadata, dimensions, max_dim_items=2)
+        metadata["usage-description"] = metadata_to_description(metadata, dimensions, max_dim_items=20)
+        
+        json_path.write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        log.info("  -> Metadata -> %s", json_path)
 
     # --- data ---
-    csv_path = out_dir / "data.csv"
     if parquet_path.exists():
         log.info("  -> Parquet exists, skipping")
     else:
@@ -392,10 +401,14 @@ def process_dataset(flow: dict) -> None:
                 mapping = dim.get("dimension-values")
                 if mapping and col in df.columns:
                     df[col] = df[col].map(lambda v, m=mapping: m.get(v, v))
-            df.to_csv(csv_path, index=False)
+            if save_csv:
+                df.to_csv(out_dir / "data.csv", index=False)
             df.to_parquet(parquet_path, index=False)
             log.info("  -> Data -> %s  (%d rows x %d cols)",
                      parquet_path, len(df), len(df.columns))
+            
+            print("Wait for 1 minute after a dataset download: API access is currently restricted to a maximum of 60 data downloads per hour")
+            time.sleep(60)
         else:
             log.warning("  -> No data for %s", df_id)
 
