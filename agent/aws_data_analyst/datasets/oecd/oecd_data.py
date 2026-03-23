@@ -84,13 +84,6 @@ def text_en(parent: ET.Element, clark_tag: str, fallback: str = "") -> str:
 # ---------------------------------------------------------------------------
 REQUEST_TIMEOUT = 120     # seconds per HTTP request
 MAX_RETRIES = 3
-RETRY_BACKOFF = 2         # seconds
-
-
-def wait_before_retry(attempt):
-    wait = RETRY_BACKOFF * (2 ** (attempt - 1))
-    log.warning(f"Retrying in {wait}s")
-    time.sleep(wait)
 
 
 def http_get(url: str, params: Optional[dict] = None,
@@ -103,6 +96,10 @@ def http_get(url: str, params: Optional[dict] = None,
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             resp = requests.get(url, params=params, headers=headers, timeout=REQUEST_TIMEOUT)
+            
+            print("Wait for 1 minute: API access is currently restricted to a maximum of 60 requests per hour")
+            time.sleep(60)
+
             if resp.status_code == 200:
                 return resp
             elif resp.status_code == 404:
@@ -110,13 +107,11 @@ def http_get(url: str, params: Optional[dict] = None,
                 return None
             elif resp.status_code == 429 or resp.status_code >= 500:
                 log.warning(f"Too Many Requests: {resp.headers}")
-                wait_before_retry(attempt)
                 continue
             log.warning("HTTP %s: %s", resp.status_code, url)
             return None
         except requests.RequestException as exc:
             log.warning(f"Request error ({exc}) attempt {attempt}/{MAX_RETRIES}: {url}")
-            wait_before_retry(attempt)
     log.error("Giving up after %d attempts: %s", MAX_RETRIES, url)
     return None
 
@@ -124,7 +119,7 @@ def http_get(url: str, params: Optional[dict] = None,
 # ---------------------------------------------------------------------------
 # Step 1 - Enumerate all dataflows
 # ---------------------------------------------------------------------------
-def list_dataflows() -> list[dict]:
+def list_dataflows(allow_list=None) -> list[dict]:
     log.info("Fetching full dataflow catalogue ...")
     resp = http_get(f"{BASE_URL}/dataflow/all/all/latest")
     if resp is None:
@@ -134,8 +129,11 @@ def list_dataflows() -> list[dict]:
     dataflows = []
 
     for df_el in root.iter(f"{{{NS_STR}}}Dataflow"):
-        agency  = df_el.get("agencyID", "")
         df_id   = df_el.get("id", "")
+        if allow_list is not None and df_id not in allow_list:
+            continue
+        
+        agency  = df_el.get("agencyID", "")
         version = df_el.get("version", "1.0")
 
         title       = text_en(df_el, f"{{{NS_COM}}}Name",        fallback=df_id)
@@ -291,12 +289,12 @@ def dimension_description(name, data, max_dim_items):
     return f"{name}: {data['dimension-description']}.{values_str}"
 
 
-def metadata_to_description(metadata, dimensions, max_dim_items):
+def metadata_to_description(metadata, max_dim_items):
     description_buffer = [
         metadata['description'],
         "Dimensions:",
     ]
-    for name, dim in sorted(dimensions.items()):
+    for name, dim in sorted( metadata['dimensions'].items()):
         dim_description = dimension_description(name, dim, max_dim_items)
         description_buffer.append(f"\t- {dim_description}")
     description = '\n'.join(description_buffer)
@@ -354,11 +352,10 @@ def process_dataset(flow: dict, save_csv=False) -> None:
     parquet_path = out_dir / "data.parquet"
     json_path    = out_dir / "dataset.json"
 
-    log.info("=== %s -- %s ===", df_id, flow["title"])
-
-    # --- metadata ---
+    log.info(f"{flow['title']}: {flow['description']}")
     if json_path.exists():
-        log.info("  -> Metadata exists, skipping")
+        log.info("  -> Metadata exists")
+        metadata = json.loads(json_path.read_text(encoding="utf-8"))
     else:
         dimensions: dict = {}
         dsd_root = fetch_dsd(flow["dsd_agency"], flow["dsd_id"], flow["dsd_version"])
@@ -367,7 +364,6 @@ def process_dataset(flow: dict, save_csv=False) -> None:
             log.info("  -> %d dimensions", len(dimensions))
         else:
             log.warning("  -> DSD unavailable for %s", df_id)
-
         metadata = {
             'original-id': original_id,
             "namespace":   "oecd",
@@ -376,10 +372,10 @@ def process_dataset(flow: dict, save_csv=False) -> None:
             "title":       flow["title"],
             "description": flow['description'],
             'url': oecd_explorer_url(original_id, flow["agencyID"], flow["version"]),
+            'dimensions': dimensions
         }
-        metadata["indexing-description"] = metadata_to_description(metadata, dimensions, max_dim_items=2)
-        metadata["usage-description"] = metadata_to_description(metadata, dimensions, max_dim_items=20)
-        
+        metadata["indexing-description"] = metadata_to_description(metadata, max_dim_items=2)
+        metadata["usage-description"] = metadata_to_description(metadata, max_dim_items=20)
         json_path.write_text(
             json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
         )
@@ -387,17 +383,17 @@ def process_dataset(flow: dict, save_csv=False) -> None:
 
     # --- data ---
     if parquet_path.exists():
-        log.info("  -> Parquet exists, skipping")
+        log.info("  -> Parquet exists")
     else:
         df = download_data(agency, original_id)
         if df is not None:
-            keep = [c for c in df.columns if c in dimensions or c == "OBS_VALUE"]
+            keep = [c for c in df.columns if c in metadata['dimensions'] or c == "OBS_VALUE"]
             dropped = sorted(set(df.columns) - set(keep))
             if dropped:
                 log.info("  -> Dropping columns: %s", dropped)
             df = df[keep]
             df = df.rename(columns={"OBS_VALUE": "observation"})
-            for col, dim in dimensions.items():
+            for col, dim in metadata['dimensions'].items():
                 mapping = dim.get("dimension-values")
                 if mapping and col in df.columns:
                     df[col] = df[col].map(lambda v, m=mapping: m.get(v, v))
@@ -406,17 +402,16 @@ def process_dataset(flow: dict, save_csv=False) -> None:
             df.to_parquet(parquet_path, index=False)
             log.info("  -> Data -> %s  (%d rows x %d cols)",
                      parquet_path, len(df), len(df.columns))
-            
-            print("Wait for 1 minute after a dataset download: API access is currently restricted to a maximum of 60 data downloads per hour")
-            time.sleep(60)
         else:
             log.warning("  -> No data for %s", df_id)
 
 
 def main() -> None:
+    debug_allow_list = None
+
     OECD_DATASETS.mkdir(parents=True, exist_ok=True)
 
-    dataflows = list_dataflows()
+    dataflows = list_dataflows(debug_allow_list)
 
     total = len(dataflows)
     for i, flow in enumerate(dataflows, 1):
@@ -425,6 +420,8 @@ def main() -> None:
             process_dataset(flow)
         except Exception as exc:
             log.error(f"Unhandled error for {flow['id']}: {exc}")
+            if debug_allow_list is not None:
+                raise exc
 
     log.info(f"Done. Processed {total} datasets into {OECD_DATASETS}")
 
