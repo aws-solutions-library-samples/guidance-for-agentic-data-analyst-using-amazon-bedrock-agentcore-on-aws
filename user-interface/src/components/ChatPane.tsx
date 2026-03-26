@@ -104,10 +104,12 @@ export function ChatPane() {
       >
         <SpaceBetween size="m">
           <Box color="text-status-inactive" fontSize="body-s">
-            Ask questions about UK Office for National Statistics data. For example:
-            <em> "Graph the employment rate through the years"</em>,
-            <em> "Did Brexit change trade with the EU?"</em>,
-            <em> "When was the highest inflation rate in the UK?"</em>
+            Ask questions about the 1,775 OECD and ONS datasets. For example:
+            <ul>
+              <li><em>"Graph the employment rate through the years"</em></li>
+              <li><em>"How has the gender wage gap evolved relative to female educational attainment gains?"</em></li>
+              <li><em>"When was the highest inflation rate in the UK?"</em></li>
+            </ul>
           </Box>
 
           <div style={{ maxHeight: 'calc(100vh - 300px)', overflowY: 'auto' }}>

@@ -2,8 +2,8 @@ import type { StreamEvent } from '../types';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore';
 
-const AGENT_RUNTIME_ARN = process.env.REACT_APP_AGENT_RUNTIME_ARN || '';
-const REGION = process.env.REACT_APP_AWS_REGION || 'us-east-1';
+const AGENT_RUNTIME_ARN = import.meta.env.VITE_AGENT_RUNTIME_ARN || '';
+const REGION = import.meta.env.VITE_AWS_REGION || 'us-east-1';
 
 export async function* streamAgentInvoke(
   prompt: string,
