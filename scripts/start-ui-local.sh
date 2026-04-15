@@ -6,6 +6,11 @@ UI_DIR="$SCRIPT_DIR/../user-interface"
 
 STACK_NAME="WebAppStack"
 
+USE_LOCAL_AGENT=false
+if [ "$1" = "--local" ]; then
+    USE_LOCAL_AGENT=true
+fi
+
 echo "=== Fetching configuration from CloudFormation ==="
 
 get_output() {
@@ -31,6 +36,7 @@ VITE_COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID
 VITE_COGNITO_IDENTITY_POOL_ID=$COGNITO_IDENTITY_POOL_ID
 VITE_AGENT_RUNTIME_ARN=$AGENT_RUNTIME_ARN
 VITE_AWS_REGION=$AWS_REGION
+VITE_USE_LOCAL_AGENT=$USE_LOCAL_AGENT
 EOF
 
 echo "Configuration retrieved:"

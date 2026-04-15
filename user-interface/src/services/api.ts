@@ -4,6 +4,8 @@ import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/clie
 
 const AGENT_RUNTIME_ARN = import.meta.env.VITE_AGENT_RUNTIME_ARN || '';
 const REGION = import.meta.env.VITE_AWS_REGION || 'us-east-1';
+const USE_LOCAL_AGENT = import.meta.env.VITE_USE_LOCAL_AGENT === 'true';
+const LOCAL_AGENT_URL = '/invocations';
 
 export async function* streamAgentInvoke(
   prompt: string,
@@ -13,23 +15,35 @@ export async function* streamAgentInvoke(
   const payload: { message: string; history?: Array<[string, string]> } = { message: prompt };
   if (history) payload.history = history;
 
-  const session = await fetchAuthSession();
-  if (!session.credentials) throw new Error('No AWS credentials');
+  let reader: ReadableStreamDefaultReader<Uint8Array>;
 
-  const client = new BedrockAgentCoreClient({ region: REGION, credentials: session.credentials });
-  const command = new InvokeAgentRuntimeCommand({
-    agentRuntimeArn: AGENT_RUNTIME_ARN,
-    runtimeSessionId: sessionId,
-    contentType: 'application/json',
-    accept: 'text/event-stream',
-    payload: new TextEncoder().encode(JSON.stringify(payload)),
-  });
+  if (USE_LOCAL_AGENT) {
+    const response = await fetch(LOCAL_AGENT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream' },
+      body: JSON.stringify({ ...payload, sessionId }),
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.body) throw new Error('No response stream');
+    reader = response.body.getReader();
+  } else {
+    const session = await fetchAuthSession();
+    if (!session.credentials) throw new Error('No AWS credentials');
 
-  const response = await client.send(command);
-  const stream = response.response;
-  if (!stream) throw new Error('No response stream');
+    const client = new BedrockAgentCoreClient({ region: REGION, credentials: session.credentials });
+    const command = new InvokeAgentRuntimeCommand({
+      agentRuntimeArn: AGENT_RUNTIME_ARN,
+      runtimeSessionId: sessionId,
+      contentType: 'application/json',
+      accept: 'text/event-stream',
+      payload: new TextEncoder().encode(JSON.stringify(payload)),
+    });
 
-  const reader = stream.transformToWebStream().getReader();
+    const response = await client.send(command);
+    const stream = response.response;
+    if (!stream) throw new Error('No response stream');
+    reader = stream.transformToWebStream().getReader();
+  }
   const decoder = new TextDecoder();
   let buffer = '';
 

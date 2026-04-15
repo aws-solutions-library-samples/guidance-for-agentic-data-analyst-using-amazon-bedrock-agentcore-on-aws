@@ -7,6 +7,7 @@ boto3==1.42.2
 json_repair==0.30.3
 jinja2==3.1.6
 s3fs==0.4.2
+smolagents==1.24.0
 
 # Used by the Agent for the data-analysis code
 numpy==1.26.4

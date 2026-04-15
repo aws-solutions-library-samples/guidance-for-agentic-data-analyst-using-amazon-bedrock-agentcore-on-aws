@@ -5,12 +5,16 @@
 - [Data Analyst Agent using Hundreds of Datasets on Amazon Athena](#data-analyst-agent-using-hundreds-of-datasets-on-amazon-athena)
   - [Table of Contents](#table-of-contents)
   - [Overview](#overview)
+    - [Demo Video](#demo-video)
     - [Notes](#notes)
     - [Cost](#cost)
     - [Sample Cost Table](#sample-cost-table)
   - [Prerequisites](#prerequisites)
   - [Deployment Steps](#deployment-steps)
   - [Deployment Validation](#deployment-validation)
+  - [Local Development](#local-development)
+    - [Run the Agent Locally](#run-the-agent-locally)
+    - [Run the UI Locally](#run-the-ui-locally)
   - [Benchmarks](#benchmarks)
     - [Dataset Search Benchmark](#dataset-search-benchmark)
     - [Agent Benchmark](#agent-benchmark)
@@ -105,6 +109,28 @@ Other example questions:
 * Did Brexit change trade with the EU?
 * What does the UK import from and export to the USA?
 * When was the highest inflation rate in the uk?
+
+## Local Development
+
+### Run the Agent Locally
+```bash
+python -m geospatial_agent.agent_service
+```
+Starts the agent on `http://localhost:8080`. Requires AWS credentials configured for Bedrock, S3, etc.
+
+### Run the UI Locally
+
+Connecting to the remote AgentCore endpoint:
+```bash
+./scripts/start-ui-local.sh
+```
+
+Connecting to a local agent on localhost:
+```bash
+./scripts/start-ui-local.sh --local
+```
+
+The script retrieves configuration from CloudFormation, generates `.env.local`, and starts the dev server. Infrastructure must be deployed first.
 
 ## Benchmarks
 The `agent` directory contains two benchmarks, to compare the performance of different foundational models.
