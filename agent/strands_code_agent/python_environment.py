@@ -2,6 +2,7 @@ import warnings
 from typing import Callable, Type, Union
 from collections import defaultdict
 
+from cryptography.utils import CryptographyDeprecationWarning
 from smolagents.local_python_executor import LocalPythonExecutor
 from strands import tool
 
@@ -14,6 +15,8 @@ def get_import_string(symbols: list[Union[Callable, Type]]) -> str:
     """Generate minimal import statements for a list of symbols."""
     by_module: dict[str, list[str]] = defaultdict(list)
     for sym in symbols:
+        if sym.__module__ == "__main__":
+            continue
         by_module[sym.__module__].append(sym.__qualname__.split(".")[0])
 
     lines = []
@@ -37,7 +40,7 @@ class PythonInterpreter:
         # via getattr(), which triggers CryptographyDeprecationWarnings on deprecated
         # elliptic curves and cipher constants that emit warnings on access, not just use.
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", category=DeprecationWarning, module="cryptography")
+            warnings.filterwarnings("ignore", category=CryptographyDeprecationWarning)
             self.executor = LocalPythonExecutor(
                 additional_authorized_imports=self.authorized_imports,
                 additional_functions=self.additional_functions,
@@ -50,9 +53,16 @@ class PythonInterpreter:
         self._init_executor()
 
     def execute_code(self, code):
-        result = self.executor(code)
-        stdout = result.logs.strip() if result.logs else ""
-        return stdout, ""
+        stdout, stderr = "", ""
+        try:
+            result = self.executor(code)
+            stdout = result.logs.strip() if result.logs else ""
+        except Exception as e:
+            # Salvage any print output captured before the error
+            if hasattr(self.executor, "state") and "_print_outputs" in self.executor.state:
+                stdout = str(self.executor.state["_print_outputs"]).strip()
+            stderr = str(e)
+        return stdout, stderr
 
     def get_tool(self):
         @tool
@@ -75,3 +85,17 @@ class PythonInterpreter:
             return '\n'.join(observation)
 
         return python_repl
+    
+    def __str__(self) -> str:
+        buffer = []
+        if self.authorized_imports:
+            buffer.append(f"# Authorized Imports: {', '.join(self.authorized_imports)}")
+        if self.additional_functions:
+            buffer.append(f"# Additional Functions: {', '.join(self.additional_functions.keys())}")
+        if self.state_initialization:
+            buffer.append(f"""# Init Code:
+```python
+{self.state_initialization}
+```
+""")
+        return '\n'.join(buffer) if buffer else "Standard PythonInterpreter"

@@ -46,11 +46,10 @@ class CodeAgent(Agent):
 
         **kwargs: Additional arguments forwarded to the Strands ``Agent`` base class.
     """
-
     def __init__(self,
-                 system_prompt:str|None,
-                 tools:list|None,
-                 toolkits:list|None,
+                 system_prompt:str|None=None,
+                 tools:list|None=None,
+                 toolkits:list|None=None,
                  tmp_dir=True,
                  **kwargs):
         authorized_imports = set()
@@ -71,15 +70,14 @@ class CodeAgent(Agent):
         additional_functions = {}
         domain_specific_doc = ""
         if domain_specific_code:
-            authorized_imports.update(sym.__module__ for sym in domain_specific_code)
+            authorized_imports.update(sym.__module__ for sym in domain_specific_code if sym.__module__ != "__main__")
             initialization_code.append(get_import_string(domain_specific_code))
             sym_doc =  "\n".join([get_documentation(sym) for sym in domain_specific_code])
             domain_specific_doc = DOMAIN_SPECIFIC_DOC_TEMPLATE.render(SYMBOLS_DOCUMENTATION=sym_doc)
             additional_functions = {sym.__qualname__.split(".")[0]: sym for sym in domain_specific_code}
         
         code_preamble = "\n".join(initialization_code)
-        if code_preamble:
-            code_preamble_doc = CODE_PREAMBLE_TEMPLATE.render(CODE_PREAMBLE=code_preamble)
+        code_preamble_doc = CODE_PREAMBLE_TEMPLATE.render(CODE_PREAMBLE=code_preamble) if code_preamble else ""
 
         tmp_dir_doc = ""
         if tmp_dir:

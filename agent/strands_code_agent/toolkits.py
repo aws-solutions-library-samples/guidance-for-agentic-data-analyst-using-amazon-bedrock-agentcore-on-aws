@@ -1,13 +1,14 @@
-"""
-A toolkit provides a set of:
- - Libraries to be added to the list of authorized_imports of the LocalPythonExecutor
- - Snippet of code to initialize the python environment
- - Extra instructions to be included in the system prompt about how to use the provided libraries
- - Domain Specific Code to be fully imported and documented
-"""
-
-
 class Toolkit:
+    """A toolkit that bundles libraries, initialization code, usage instructions, and domain-specific
+    symbols for use by a CodeAgent's Python REPL environment.
+
+    Args:
+        libraries: Library names to authorize as imports in the Python executor.
+        initialization_code: Python code snippet to run when initializing the environment.
+        usage_instructions: Extra instructions included in the system prompt about how to use the provided libraries.
+        domain_specific_code: Callable symbols to be fully imported and documented in the agent's context.
+    """
+
     def __init__(self,
                  libraries: list[str]|None=None,
                  initialization_code:str|None=None,

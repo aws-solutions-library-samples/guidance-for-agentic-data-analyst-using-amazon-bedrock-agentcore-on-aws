@@ -107,8 +107,9 @@ export function ChatPane() {
             Ask questions about the 1,775 OECD and ONS datasets. For example:
             <ul>
               <li><em>"Graph the employment rate through the years"</em></li>
-              <li><em>"How has the gender wage gap evolved relative to female educational attainment gains?"</em></li>
+              <li><em>"Is there a relationship between healthcare spending per capita and avoidable mortality?"</em></li>
               <li><em>"When was the highest inflation rate in the UK?"</em></li>
+              <li><em>"How has the gender wage gap evolved relative to female educational attainment gains?"</em></li>
             </ul>
           </Box>
 

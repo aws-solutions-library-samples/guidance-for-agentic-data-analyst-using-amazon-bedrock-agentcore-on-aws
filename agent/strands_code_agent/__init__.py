@@ -1,4 +1,4 @@
 from strands_code_agent.code_agent import CodeAgent
-from strands_code_agent.document_code import get_documentation
+from strands_code_agent.toolkits import Toolkit
 
-__all__ = ["CodeAgent", "get_documentation"]
+__all__ = ["CodeAgent", "Toolkit"]
