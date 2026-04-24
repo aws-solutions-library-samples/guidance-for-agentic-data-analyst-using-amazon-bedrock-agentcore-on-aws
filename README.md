@@ -114,7 +114,8 @@ Other example questions:
 
 ### Run the Agent Locally
 ```bash
-python -m geospatial_agent.agent_service
+cd agent
+python -m aws_data_analyst.data_analyst_agent_service
 ```
 Starts the agent on `http://localhost:8080`. Requires AWS credentials configured for Bedrock, S3, etc.
 

@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+
+
+@dataclass
 class Toolkit:
     """A toolkit that bundles libraries, initialization code, usage instructions, and domain-specific
     symbols for use by a CodeAgent's Python REPL environment.
@@ -8,16 +12,10 @@ class Toolkit:
         usage_instructions: Extra instructions included in the system prompt about how to use the provided libraries.
         domain_specific_code: Callable symbols to be fully imported and documented in the agent's context.
     """
-
-    def __init__(self,
-                 libraries: list[str]|None=None,
-                 initialization_code:str|None=None,
-                 usage_instructions:str|None=None,
-                 domain_specific_code:list|None=None):
-        self.libraries = libraries
-        self.initialization_code = initialization_code
-        self.usage_instructions = usage_instructions
-        self.domain_specific_code = domain_specific_code
+    libraries: list[str] | None = None
+    initialization_code: str | None = None
+    usage_instructions: str | None = None
+    domain_specific_code: list | None = None
 
 
 VISUALIZATION_TOOLKIT = Toolkit(

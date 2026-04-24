@@ -4,7 +4,8 @@ from strands import Agent
 from jinja2 import Template
 
 from strands_code_agent.document_code import get_documentation
-from strands_code_agent.python_environment import get_import_string, PythonInterpreter
+from strands_code_agent.python_environments.local_exec import ExecPythonInterpreter
+from strands_code_agent.imports import get_import_string, extract_imports
 
 
 CODE_AGENT_INSTRUCTIONS = """
@@ -33,24 +34,50 @@ You can use the following Domain Specific Code:
 
 
 class CodeAgent(Agent):
-    """A coding agent that extends Strands Agent with a Python REPL and domain-specific symbol documentation.
+    """A coding agent that extends Strands Agent with a sandboxed Python REPL and domain-specific symbol documentation.
+
+    CodeAgent wraps a :class:`PythonInterpreter` as a built-in ``python_repl`` tool and
+    assembles a system prompt from the provided toolkits. Each :class:`Toolkit` can contribute:
+
+    - **libraries** – module names authorized for import in the sandboxed interpreter.
+    - **initialization_code** – Python code executed at interpreter startup (e.g. imports, config).
+      Any modules imported in this code are automatically authorized.
+    - **usage_instructions** – free-text guidance appended to the system prompt.
+    - **domain_specific_code** – callable symbols whose source and docstrings are documented in
+      the system prompt and made available in the interpreter.
+
+    The interpreter state persists across tool invocations within a single agent turn but
+    resets completely between user messages.
 
     Args:
-        system_prompt: the system prompt to be expanded with the coding instructions.
+        system_prompt: Optional base system prompt prepended before the coding instructions.
 
-        tools: additional tools to include alongside the built-in Python REPL.
+        tools: Additional tools to include alongside the built-in Python REPL.
 
-        toolkits: additional libraries, initialization code, usage instructions and Domain Specific Code.
-                
-        tmp_dir: If True, creates a temporary directory and documents its path in the system prompt.
+        toolkits: :class:`Toolkit` instances that supply libraries, initialization code,
+            usage instructions, and domain-specific symbols to the REPL environment.
 
-        **kwargs: Additional arguments forwarded to the Strands ``Agent`` base class.
+        tmp_dir: If ``True`` (default), creates a temporary directory under ``/tmp`` and
+            documents its path in the system prompt so the agent can write files there.
+
+        timeout_seconds: Maximum execution time in seconds for each ``python_repl``
+            invocation. Defaults to ``60``.
+
+        python_interpreter_class: The :class:`PythonInterpreter` subclass to use for
+            code execution. Defaults to :class:`ExecPythonInterpreter` (lightweight,
+            unrestricted ``exec()``-based). Use :class:`SandboxedPythonInterpreter`
+            for import restrictions and sandboxed execution.
+
+        **kwargs: Additional arguments forwarded to the Strands :class:`Agent` base class
+            (e.g. ``model``, ``callback_handler``).
     """
     def __init__(self,
                  system_prompt:str|None=None,
                  tools:list|None=None,
                  toolkits:list|None=None,
                  tmp_dir=True,
+                 timeout_seconds=60,
+                 python_interpreter_class=ExecPythonInterpreter,
                  **kwargs):
         authorized_imports = set()
         initialization_code = []
@@ -77,6 +104,9 @@ class CodeAgent(Agent):
             additional_functions = {sym.__qualname__.split(".")[0]: sym for sym in domain_specific_code}
         
         code_preamble = "\n".join(initialization_code)
+        # Auto-authorize any modules imported in initialization code so users
+        # don't have to duplicate them in both `libraries` and `initialization_code`.
+        authorized_imports.update(extract_imports(code_preamble))
         code_preamble_doc = CODE_PREAMBLE_TEMPLATE.render(CODE_PREAMBLE=code_preamble) if code_preamble else ""
 
         tmp_dir_doc = ""
@@ -93,10 +123,11 @@ class CodeAgent(Agent):
             domain_specific_doc
         ])
 
-        self.python_repl = PythonInterpreter(
+        self.python_repl = python_interpreter_class(
             code_preamble,
             authorized_imports=authorized_imports,
             additional_functions=additional_functions,
+            timeout_seconds=timeout_seconds,
         )
         python_repl_tool = self.python_repl.get_tool()
         if tools is not None:
