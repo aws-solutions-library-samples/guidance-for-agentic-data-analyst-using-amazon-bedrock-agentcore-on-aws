@@ -17,6 +17,8 @@ def extract_imports(code: str) -> set[str]:
         elif isinstance(node, ast.ImportFrom):
             if node.module:
                 modules.add(node.module)
+                for alias in node.names:
+                    modules.add(f"{node.module}.{alias.name}")
     return modules
 
 

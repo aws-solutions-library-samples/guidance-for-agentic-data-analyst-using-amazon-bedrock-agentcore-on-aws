@@ -4,7 +4,7 @@ from strands import Agent
 from jinja2 import Template
 
 from strands_code_agent.document_code import get_documentation
-from strands_code_agent.python_environments.local_exec import ExecPythonInterpreter
+from strands_code_agent.python_environments.local_sandboxed import SandboxedPythonInterpreter
 from strands_code_agent.imports import get_import_string, extract_imports
 
 
@@ -77,7 +77,7 @@ class CodeAgent(Agent):
                  toolkits:list|None=None,
                  tmp_dir=True,
                  timeout_seconds=60,
-                 python_interpreter_class=ExecPythonInterpreter,
+                 python_interpreter_class=SandboxedPythonInterpreter,
                  **kwargs):
         authorized_imports = set()
         initialization_code = []

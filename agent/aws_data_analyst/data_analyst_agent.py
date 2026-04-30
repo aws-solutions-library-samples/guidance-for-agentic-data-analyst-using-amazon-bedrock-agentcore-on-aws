@@ -4,7 +4,7 @@ from strands.models import BedrockModel
 from json_repair import repair_json
 
 from strands_code_agent.code_agent import CodeAgent
-from strands_code_agent.toolkits import Toolkit, VISUALIZATION_TOOLKIT, NUMPY, PANDAS, DATETIME
+from strands_code_agent.toolkits import Toolkit, VISUALIZATION_TOOLKIT, DATA_ANALYSIS_TOOLKIT
 from strands_code_agent.utils import image_to_base64
 
 from aws_data_analyst.datasets_db import DatasetsDB
@@ -96,7 +96,7 @@ class DataAnalystAgent:
                 DatasetSearch(self.datasets_db, self.datasets_loader).get_tool()
             ],
             toolkits=[
-                NUMPY, PANDAS, DATETIME, VISUALIZATION_TOOLKIT,
+                DATA_ANALYSIS_TOOLKIT, VISUALIZATION_TOOLKIT,
                 QUERY_HANDLER_TOOLKIT,
             ],
             model=BedrockModel(
