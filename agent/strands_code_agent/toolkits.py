@@ -19,7 +19,7 @@ class Toolkit:
 
 
 VISUALIZATION_TOOLKIT = Toolkit(
-    libraries = ['matplotlib', 'matplotlib.pyplot', 'seaborn'],
+    libraries = ['matplotlib.*', 'seaborn.*'],
     initialization_code = """
 # Visualization Libraries
 import matplotlib
@@ -33,11 +33,10 @@ Do not try to show any matplotlib image: the python_repl tool executes the code 
 
 
 DATA_ANALYSIS_TOOLKIT = Toolkit(
-    libraries = ['numpy', 'pandas', 'scipy', 'datetime'],
+    libraries = ['numpy.*', 'pandas.*', 'scipy.*', 'datetime'],
     initialization_code = """
 from datetime import date, datetime, timedelta
 
-from scipy import stats
 import numpy as np
 import pandas as pd
 """)
