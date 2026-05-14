@@ -6,6 +6,7 @@ cdk-nag
 
 # Runtime
 strands-agents
+strands-code-agent
 bedrock-agentcore
 aws-opentelemetry-distro>=0.10.1
 boto3
