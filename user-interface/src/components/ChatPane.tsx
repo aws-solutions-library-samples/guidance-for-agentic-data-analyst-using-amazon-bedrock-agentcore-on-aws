@@ -14,6 +14,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { Message } from '../types';
 import { streamAgentInvoke } from '../services/api';
+import { InteractiveChart } from './InteractiveChart';
 import { useAuth } from '../auth';
 import { useReactToPrint } from 'react-to-print';
 import { v4 as uuidv4 } from 'uuid';
@@ -64,6 +65,8 @@ export function ChatPane() {
       for await (const event of streamAgentInvoke(prompt, sessionId, history)) {
         if (event.type === 'image' && event.content) {
           setMessages(prev => [...prev, { role: 'assistant', content: '', images: [event.content!] }]);
+        } else if (event.type === 'interactive_chart' && event.content) {
+          setMessages(prev => [...prev, { role: 'assistant', content: '', charts: [{ spec: event.content!, type: event.chartType || 'plotly' }] }]);
         } else if (event.type === 'text' && event.content) {
           setMessages(prev => [...prev, { role: 'assistant', content: event.content! }]);
           newHistory.push(['assistant', event.content!]);
@@ -126,6 +129,9 @@ export function ChatPane() {
                       {msg.images?.map((img, idx) => (
                         <img key={idx} src={`data:image/png;base64,${img}`} alt={`Chart ${idx + 1}`} style={{ maxWidth: '100%', marginTop: 8, borderRadius: 4 }} />
                       ))}
+                      {msg.charts?.map((chart, idx) => (
+                        <InteractiveChart key={idx} spec={chart.spec} type={chart.type} />
+                      ))}
                     </Box>
                   </div>
                 ))}
@@ -178,6 +184,9 @@ export function ChatPane() {
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code: CodeBlock }}>{msg.content}</ReactMarkdown>
                     {msg.images?.map((img, idx) => (
                       <img key={idx} src={`data:image/png;base64,${img}`} alt={`Chart ${idx + 1}`} style={{ maxWidth: '100%' }} />
+                    ))}
+                    {msg.charts?.map((chart, idx) => (
+                      <InteractiveChart key={idx} spec={chart.spec} type={chart.type} />
                     ))}
                   </div>
                 </div>

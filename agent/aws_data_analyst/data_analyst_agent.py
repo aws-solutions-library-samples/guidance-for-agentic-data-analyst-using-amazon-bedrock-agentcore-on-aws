@@ -7,6 +7,16 @@ from strands_code_agent.code_agent import CodeAgent
 from strands_code_agent.toolkits import Toolkit, VISUALIZATION_TOOLKIT, DATA_ANALYSIS_TOOLKIT
 from strands_code_agent.utils import image_to_base64
 
+PLOTLY_TOOLKIT = Toolkit(
+    libraries=['plotly.*'],
+    initialization_code="import plotly.express as px\nimport plotly.graph_objects as go",
+    usage_instructions="""
+When creating interactive charts, use plotly.express or plotly.graph_objects.
+Save the figure to a JSON file with fig.write_json(), then call the visualize_interactive_chart tool with the file path.
+Do NOT call fig.show() — there is no GUI.
+""",
+)
+
 from aws_data_analyst.datasets_db import DatasetsDB
 from aws_data_analyst.dataset_search_tool import DatasetSearch
 from aws_data_analyst.bedrock_models import MODELS, DEFAULT_MODEL_ID, DEFAULT_TEMPERATURE
@@ -22,6 +32,8 @@ Your answer has to be grounded on a dataset.
 If you cannot find a suitable dataset to ground your question, set "supported_by_data" to `false` and explain in the answer text about the lack of a suitable dataset.
 
 If you want to show an image to the user invoke the `visualize_image` tool.
+
+For interactive charts (with zoom, pan, hover tooltips), use Plotly and the `visualize_interactive_chart` tool.
 
 You can search additional datasets with the `search_datasets` tool.
 For example, a more generic dataset can contain specific information about the user query once you apply a filter on its dimensions.
@@ -68,6 +80,24 @@ def visualize_image(image_path: str):
     pass
 
 
+@tool
+def visualize_interactive_chart(chart_path: str, chart_type: str = "plotly"):
+    """
+    Send an interactive chart to the client for rendering.
+    The chart will be rendered as an interactive visualization with zoom, pan, and hover tooltips.
+
+    First save the chart JSON to a file, then call this tool with the file path:
+        fig = px.line(df, x='date', y='value')
+        fig.write_json('/tmp/.../chart.json')
+        visualize_interactive_chart(chart_path='/tmp/.../chart.json')
+
+    Args:
+        chart_path: Path to a JSON file containing the chart specification (written with fig.write_json() for Plotly).
+        chart_type: Either "plotly" or "vega-lite".
+    """
+    pass
+
+
 class DataAnalystAgent:
     def __init__(self,
                  model_id=DEFAULT_MODEL_ID,
@@ -93,10 +123,11 @@ class DataAnalystAgent:
             system_prompt=SYSTEM_PROMPT,
             tools=[
                 visualize_image,
+                visualize_interactive_chart,
                 DatasetSearch(self.datasets_db, self.datasets_loader).get_tool()
             ],
             toolkits=[
-                DATA_ANALYSIS_TOOLKIT, VISUALIZATION_TOOLKIT,
+                DATA_ANALYSIS_TOOLKIT, VISUALIZATION_TOOLKIT, PLOTLY_TOOLKIT,
                 QUERY_HANDLER_TOOLKIT,
             ],
             model=BedrockModel(
@@ -171,6 +202,9 @@ class DataAnalystAgent:
 
                         if toolUse['name'] == 'visualize_image':
                             toolUse['image'] = image_to_base64(toolUse['input']['image_path'])
+                        elif toolUse['name'] == 'visualize_interactive_chart':
+                            with open(toolUse['input']['chart_path'], 'r') as f:
+                                toolUse['chart_spec'] = f.read()
 
                         yield toolUse
 
@@ -178,7 +212,7 @@ class DataAnalystAgent:
                         toolResult = content['toolResult']
                         toolResult['name'] = self.tool_uses[toolResult['toolUseId']]
 
-                        if toolResult['name'] == 'visualize_image':
+                        if toolResult['name'] in ('visualize_image', 'visualize_interactive_chart'):
                             continue
 
                         toolResult["msg_type"] = "toolResult"

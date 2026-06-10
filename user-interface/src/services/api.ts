@@ -78,6 +78,13 @@ export async function* streamAgentInvoke(
         } else if (event.msg_type === 'toolUse' && event.image) {
           yield { type: 'image', content: event.image };
 
+        } else if (event.msg_type === 'toolUse' && event.name === 'visualize_interactive_chart') {
+          yield {
+            type: 'interactive_chart',
+            content: event.chart_spec,
+            chartType: event.input.chart_type || 'plotly'
+          };
+
         } else if (event.msg_type === 'toolUse' && event.name === 'python_repl') {
           yield { type: 'python_code', content: event.input.code };
 
