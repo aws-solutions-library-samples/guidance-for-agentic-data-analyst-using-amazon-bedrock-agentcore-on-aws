@@ -32,11 +32,13 @@
   - [Authors](#authors)
 
 ## Overview
+
 Organizations often manage hundreds of datasets across their data lakes, making it difficult for analysts to discover which datasets contain the information they need. Traditional keyword-based search falls short when users don't know the exact terminology or structure of available data. This creates a bottleneck where valuable data remains underutilized simply because it's hard to find.
 
 This guidance provides a scalable approach for deploying a Data Analyst Agent that can query hundreds of datasets hosted on **Amazon Athena**. Built on the **Strands Agents** framework and the **[Strands Code Agent](https://pypi.org/project/strands-code-agent/)** library, and deployed on **AWS AgentCore**, the agent leverages semantic search powered by **Amazon S3 Vectors** to automatically identify and retrieve the most relevant datasets based on user queries.
 
 For each new dataset added to the system, the admin must upload two files:
+
 1. A **Parquet file** with the raw data, which initialises the corresponding Athena table.
 2. A **JSON metadata file** with a dataset description, which creates a vector database entry enabling semantic discovery by the agent.
 
@@ -62,9 +64,9 @@ We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/lat
 
 The following table provides a sample cost breakdown for deploying this Guidance with the default parameters in the US East (N. Virginia) Region for one month.
 
-| AWS service  | Dimensions | Cost [USD] |
+| AWS service | Dimensions | Cost [USD] |
 | ----------- | ------------ | ------------ |
-| Amazon Bedrock foundation model (Anthropic Claude Haiku 4.5) | 1,000 Agent invocations per month  | $ 70.20 |
+| Amazon Bedrock foundation model (Anthropic Claude Haiku 4.5) | 1,000 Agent invocations per month | $ 70.20 |
 | Amazon Bedrock AgentCore runtime | 1,000 sessions per month | $ 14.06 |
 | AWS Lambda | 317 dataset ingestion per month | $ 6.03 |
 | Amazon Athena | 1000 requests per month | $ 4.88 |
@@ -78,6 +80,7 @@ The Data Analyst Agent answers natural-language questions over a corpus of struc
 ### Ingestion Flow
 
 For each dataset, an admin uploads two files to the ingestion bucket: a Parquet file with the rows, and a JSON metadata file describing the dataset. S3 events trigger two Lambda functions:
+
 1. One registers the Parquet file as an external table in the **AWS Glue Data Catalog** (queryable through Athena).
 2. One embeds the metadata's `indexing-description` field into an **S3 Vectors** index.
 
@@ -117,10 +120,12 @@ We replace codes with human-readable labels at ingestion time. The obvious objec
 Self-explanatory data is essentially free in Parquet, and expensive in CSV.
 
 ## Prerequisites
+
 - AWS CLI configured with appropriate permissions
 - Docker installed and running
 - Python 3.10+
 - AWS CDK bootstrapped (if first time):
+
   ```bash
   npm install -g aws-cdk
   cdk bootstrap
@@ -131,17 +136,20 @@ Self-explanatory data is essentially free in Parquet, and expensive in CSV.
 ## Deployment Steps
 
 1. Clone the repository and install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
 
 2. From the `infrastructure` directory, deploy the stacks:
+
    ```bash
    cd infrastructure
    cdk deploy --all
    ```
 
 3. From the `agent` directory, download and upload datasets:
+
    ```bash
    cd agent
 
@@ -162,15 +170,18 @@ Self-explanatory data is essentially free in Parquet, and expensive in CSV.
    3. Enter a "User name" and a "Temporary password", then click **Create User**.
 
 ## Deployment Validation
+
 After a successful CDK deployment, on the CloudFormation page of the AWS console you should see four stacks:
-* `DataStack`: ingestion S3 bucket, ingestion Lambdas, Athena datasets database, S3 Vectors bucket and index.
-* `AgentCoreStack`: ECR repository, CodeBuild project that builds and pushes the agent container, Amazon Bedrock AgentCore runtime resource, and IAM execution role.
-* `WebAppStack`: Amazon Cognito user pool, S3 bucket for the React build, and CloudFront distribution.
-* `WafStack`: AWS WAF web ACL attached to CloudFront (deployed in us-east-1).
+
+- `DataStack`: ingestion S3 bucket, ingestion Lambdas, Athena datasets database, S3 Vectors bucket and index.
+- `AgentCoreStack`: ECR repository, CodeBuild project that builds and pushes the agent container, Amazon Bedrock AgentCore runtime resource, and IAM execution role.
+- `WebAppStack`: Amazon Cognito user pool, S3 bucket for the React build, and CloudFront distribution.
+- `WafStack`: AWS WAF web ACL attached to CloudFront (deployed in us-east-1).
 
 On the S3 page you can see the `datasets-*` bucket that contains two folders:
-* `datasets/`: containing the parquet data files.
-* `metadata/`: containing the JSON metadata files.
+
+- `datasets/`: containing the parquet data files.
+- `metadata/`: containing the JSON metadata files.
 
 On the CloudFront page you can see the "Domain name" of the deployed web-app.
 Enter this domain name on any browser to load the demo web-app, and log-in with the user credentials that you created in the Cognito user-pool. The first time you log-in you will be instructed to change the temporary password to a new one.
@@ -180,10 +191,11 @@ Enter any query that could be supported by the available datasets, and the data-
 ![Example Query](./data/media/employment-rate.png)
 
 Other example questions:
-* Did Brexit change trade with the EU?
-* What does the UK import from and export to the USA?
-* When was the highest inflation rate in the UK?
-* Is there a relationship between healthcare spending per capita and avoidable mortality?
+
+- Did Brexit change trade with the EU?
+- What does the UK import from and export to the USA?
+- When was the highest inflation rate in the UK?
+- Is there a relationship between healthcare spending per capita and avoidable mortality?
 
 ## Adding Your Own Datasets
 
@@ -206,6 +218,7 @@ Adding a dataset requires two files uploaded to the ingestion S3 bucket:
 - The `usage-description` is **injected into the prompt** when the dataset is retrieved.
 
 Upload both files:
+
 ```bash
 aws s3 cp data.parquet s3://datasets-<account-id>/datasets/<namespace>/<dataset-name>/
 aws s3 cp dataset.json s3://datasets-<account-id>/metadata/<namespace>/<dataset-name>/
@@ -236,20 +249,24 @@ Parquet's dictionary encoding stores each unique label exactly once, so expandin
 ## Local Development
 
 ### Run the Agent Locally
+
 ```bash
 cd agent
 python -m aws_data_analyst.data_analyst_agent_service
 ```
+
 Starts the agent on `http://localhost:8080`. Requires AWS credentials configured for Bedrock, S3, etc.
 
 ### Run the UI Locally
 
 Connecting to the remote AgentCore endpoint:
+
 ```bash
 ./scripts/start-ui-local.sh
 ```
 
 Connecting to a local agent on localhost:
+
 ```bash
 ./scripts/start-ui-local.sh --local
 ```
@@ -257,11 +274,14 @@ Connecting to a local agent on localhost:
 The script retrieves configuration from CloudFormation, generates `.env.local`, and starts the dev server. Infrastructure must be deployed first.
 
 ## Benchmarks
+
 The `agent` directory contains two benchmarks, to compare the performance of different foundational models.
 
 ### Dataset Search Benchmark
+
 To run the dataset search benchmark use the following script:
-```
+
+```bash
 python aws_data_analyst/evaluation/benchmark_dataset_discovery.py
 ```
 
@@ -271,8 +291,10 @@ python aws_data_analyst/evaluation/benchmark_dataset_discovery.py
 | cohere.embed-v4:0                         |  215         |  76%          |
 
 ### Agent Benchmark
+
 To run the agent benchmark use the following script:
-```
+
+```bash
 python aws_data_analyst/evaluation/benchmark_agent.py
 ```
 
@@ -284,29 +306,35 @@ python aws_data_analyst/evaluation/benchmark_agent.py
 | global.anthropic.claude-opus-4-6-v1              | 5.2                | 0.37          | 89%        |
 
 ## Next Steps
+
 The system can work with any other dataset — simply upload its Parquet data file and JSON metadata file to the corresponding S3 bucket paths. See [Adding Your Own Datasets](#adding-your-own-datasets) for details.
 
 To extend the agent further:
+
 - Install the [strands-code-agent](https://pypi.org/project/strands-code-agent/) library and define custom Toolkits that expose your domain capabilities as importable Python functions.
 - Read the [Strands Agents SDK documentation](https://strandsagents.com/) and the [Amazon Bedrock AgentCore documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore.html).
 
 ## Cleanup
 
 **1. Empty the S3 buckets** (ingestion bucket and Athena query-results bucket) before destroying stacks, otherwise CloudFormation will fail to delete them:
+
 ```bash
 aws s3 rm s3://datasets-<account-id> --recursive
 ```
 
 **2. Destroy the CloudFormation stacks:**
+
 ```bash
 cd infrastructure
 cdk destroy --all
 ```
 
 ## Notices
+
 *Customers are responsible for making their own independent assessment of the information in this Guidance. This Guidance: (a) is for informational purposes only, (b) represents AWS current product offerings and practices, which are subject to change without notice, and (c) does not create any commitments or assurances from AWS and its affiliates, suppliers or licensors. AWS products or services are provided "as is" without warranties, representations, or conditions of any kind, whether express or implied. AWS responsibilities and liabilities to its customers are controlled by AWS agreements, and this Guidance is not part of, nor does it modify, any agreement between AWS and its customers.*
 
 ## Authors
-* Emilio Monti
-* Ozan Cihangir
-* Luis Orus
+
+- Emilio Monti
+- Ozan Cihangir
+- Luis Orus
