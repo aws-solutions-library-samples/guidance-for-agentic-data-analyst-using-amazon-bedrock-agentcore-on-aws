@@ -18,6 +18,8 @@ from aws_cdk import (
 from constructs import Construct
 from cdk_nag import NagSuppressions
 
+from stacks.solution import SOLUTION_USER_AGENT
+
 class AgentCoreStack(Stack):
     """Stack for AgentCore runtime infrastructure"""
 
@@ -202,6 +204,8 @@ class AgentCoreStack(Stack):
             timeout=Duration.minutes(15),
             code=_lambda.Code.from_asset("lambda/func_build_trigger"),
             role=build_trigger_role,
+            layers=[data_stack.solution_user_agent_layer],
+            environment={"USER_AGENT_STRING": SOLUTION_USER_AGENT},
         )
 
         NagSuppressions.add_resource_suppressions(
@@ -452,7 +456,8 @@ class AgentCoreStack(Stack):
                 "AWS_DEFAULT_REGION": self.region,
                 "DATABASES_METADATA_S3": data_stack.athena_data_bucket.bucket_name,
                 "ATHENA_OUTPUT_LOCATION": data_stack.athena_query_results_bucket.bucket_name,
-                "VERSION_HASH": source_hash
+                "VERSION_HASH": source_hash,
+                "USER_AGENT_STRING": SOLUTION_USER_AGENT
             },
         )
 

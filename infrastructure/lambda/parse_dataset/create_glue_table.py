@@ -10,6 +10,8 @@ This function:
 5. Generates table name following convention: dataset_{namespace}_{id}
 6. Creates or updates Glue table with extracted schema
 """
+import solution_user_agent  # noqa: F401 - registers the AWS Solutions user-agent hook; import first
+
 import json
 import os
 import urllib.parse

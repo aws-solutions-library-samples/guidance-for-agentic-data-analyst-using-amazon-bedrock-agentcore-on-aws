@@ -30,7 +30,7 @@ export async function* streamAgentInvoke(
     const session = await fetchAuthSession();
     if (!session.credentials) throw new Error('No AWS credentials');
 
-    const client = new BedrockAgentCoreClient({ region: REGION, credentials: session.credentials });
+    const client = new BedrockAgentCoreClient({ region: REGION, credentials: session.credentials, customUserAgent: [['AWSSOLUTION/SO0354', 'v0.1.0']] });
     const command = new InvokeAgentRuntimeCommand({
       agentRuntimeArn: AGENT_RUNTIME_ARN,
       runtimeSessionId: sessionId,

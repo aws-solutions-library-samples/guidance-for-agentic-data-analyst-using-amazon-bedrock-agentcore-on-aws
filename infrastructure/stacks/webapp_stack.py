@@ -37,7 +37,10 @@ class WebAppStack(Stack):
 
         NagSuppressions.add_resource_suppressions(
             user_pool,
-            [{"id": "AwsSolutions-COG3", "reason": "Advanced Security requires Cognito Plus feature plan. Not used for this sample."}],
+            [
+                {"id": "AwsSolutions-COG3", "reason": "Advanced Security requires Cognito Plus feature plan. Not used for this sample."},
+                {"id": "AwsSolutions-COG8", "reason": "Cognito Plus feature plan adds per-MAU cost for advanced security features not needed by this sample. Using the default (Lite) plan."},
+            ],
         )
 
         user_pool_client = cognito.UserPoolClient(self,

@@ -1,3 +1,5 @@
+from aws_data_analyst import solution_user_agent  # noqa: F401 - registers the AWS Solutions user-agent hook; import first
+
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 from aws_data_analyst.bedrock_models import DEFAULT_MODEL_ID

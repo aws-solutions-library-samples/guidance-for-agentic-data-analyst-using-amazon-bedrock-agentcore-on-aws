@@ -17,6 +17,8 @@ from pathlib import Path
 # See: https://github.com/bimnett/cdk-s3-vectors/blob/main/examples/python.py
 import cdk_s3_vectors as s3_vectors
 
+from stacks.solution import SOLUTION_USER_AGENT
+
 
 DEFAULT_EMBEDDER = "nova"
 EMBEDDING_DIMENSION = 1024
@@ -265,6 +267,20 @@ class DataStack(Stack):
             layer_version_arn=f"arn:aws:lambda:{self.region}:336392948345:layer:AWSSDKPandas-Python313:5"
         )
 
+        # Shared layer providing the AWS Solutions user-agent hook to every
+        # Python Lambda in the solution. Exposed so other stacks can reuse it.
+        self.solution_user_agent_layer = lambda_.LayerVersion(
+            self, "SolutionUserAgentLayer",
+            code=lambda_.Code.from_asset(
+                str(Path(__file__).parent.parent / "layers" / "solution_user_agent")
+            ),
+            compatible_runtimes=[
+                lambda_.Runtime.PYTHON_3_13,
+                lambda_.Runtime.PYTHON_3_14,
+            ],
+            description="AWS Solutions usage-tracking user-agent hook (solution_user_agent)",
+        )
+
         glue_table_creator = lambda_.Function(
             self, "GlueTableCreatorFunction",
             runtime=lambda_.Runtime.PYTHON_3_13,
@@ -274,12 +290,13 @@ class DataStack(Stack):
                 exclude=["requirements.txt", "__pycache__"]
             ),
             role=lambda_role,
-            layers=[pyarrow_layer],
+            layers=[pyarrow_layer, self.solution_user_agent_layer],
             timeout=Duration.minutes(15), # Keeping the Lambda duration maximum for large parquet files
             memory_size=10240,  # Keeping the memory high for large parquet files
             environment={
                 "GLUE_DATABASE_NAME": self.glue_database.ref,
-                "BUCKET_NAME": self.athena_data_bucket.bucket_name
+                "BUCKET_NAME": self.athena_data_bucket.bucket_name,
+                "USER_AGENT_STRING": SOLUTION_USER_AGENT
             },
             description="Automatically creates Glue tables when new Parquet files are uploaded"
         )
@@ -376,8 +393,10 @@ class DataStack(Stack):
                 exclude=["requirements.txt", "__pycache__"]
             ),
             role=vector_db_lambda_role,
+            layers=[self.solution_user_agent_layer],
             environment={
-                "BUCKET_NAME": self.athena_data_bucket.bucket_name
+                "BUCKET_NAME": self.athena_data_bucket.bucket_name,
+                "USER_AGENT_STRING": SOLUTION_USER_AGENT
             },
             description="Automatically index datasets when new metadata files are uploaded"
         )
