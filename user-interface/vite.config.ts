@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
+    open: true,
     proxy: {
       '/invocations': 'http://localhost:8080',
     },

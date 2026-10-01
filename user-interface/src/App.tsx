@@ -4,6 +4,7 @@ import { ChatPane } from './components/ChatPane';
 import { AuthProvider, LoginForm, NewPasswordForm, useAuth } from './auth';
 import { useState } from 'react';
 import { AuthError } from './auth/types';
+import { USE_LOCAL_AGENT } from './services/api';
 
 function LoginPage() {
   const { signIn, isLoading, requiresNewPassword, completeNewPassword } = useAuth();
@@ -25,7 +26,7 @@ function LoginPage() {
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
-  return isAuthenticated ? (
+  return (USE_LOCAL_AGENT || isAuthenticated) ? (
     <AppLayout content={<ChatPane />} navigationHide toolsHide disableContentPaddings />
   ) : (
     <LoginPage />

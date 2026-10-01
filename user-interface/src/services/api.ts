@@ -4,7 +4,7 @@ import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/clie
 
 const AGENT_RUNTIME_ARN = import.meta.env.VITE_AGENT_RUNTIME_ARN || '';
 const REGION = import.meta.env.VITE_AWS_REGION || 'us-east-1';
-const USE_LOCAL_AGENT = import.meta.env.VITE_USE_LOCAL_AGENT === 'true';
+export const USE_LOCAL_AGENT = import.meta.env.VITE_USE_LOCAL_AGENT === 'true';
 const LOCAL_AGENT_URL = '/invocations';
 
 export async function* streamAgentInvoke(
