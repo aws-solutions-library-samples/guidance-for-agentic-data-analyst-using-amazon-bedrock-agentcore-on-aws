@@ -54,7 +54,7 @@ The sample datasets used in this guidance are sourced from the [UK Office for Na
 
 ### Cost
 
-You are responsible for the cost of the AWS services used while running this Guidance. As of January 2026, the cost for running this Guidance with the default settings in the US East (N. Virginia) is approximately $95.44 per month for processing 1,000 queries.
+You are responsible for the cost of the AWS services used while running this Guidance. As of January 2026, the cost for running this Guidance with the default settings in the US East (N. Virginia) is approximately $32.26 per month for processing 1,000 queries.
 
 We recommend creating a [Budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html) through [AWS Cost Explorer](https://aws.amazon.com/aws-cost-management/aws-cost-explorer/) to help manage costs. Prices are subject to change. For full details, refer to the pricing webpage for each AWS service used in this Guidance.
 
@@ -64,7 +64,7 @@ The following table provides a sample cost breakdown for deploying this Guidance
 
 | AWS service  | Dimensions | Cost [USD] |
 | ----------- | ------------ | ------------ |
-| Amazon Bedrock foundation model (Anthropic Claude Haiku 4.5) | 1,000 Agent invocations per month  | $ 70.20 |
+| Amazon Bedrock foundation model (Anthropic Claude Haiku 5.5) | 1,000 Agent invocations per month  | $ 7.02 |
 | Amazon Bedrock AgentCore runtime | 1,000 sessions per month | $ 14.06 |
 | AWS Lambda | 317 dataset ingestion per month | $ 6.03 |
 | Amazon Athena | 1000 requests per month | $ 4.88 |
