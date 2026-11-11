@@ -5,6 +5,11 @@
 
 # testing
 /coverage
+/e2e/.dist
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
 
 # production
 /build

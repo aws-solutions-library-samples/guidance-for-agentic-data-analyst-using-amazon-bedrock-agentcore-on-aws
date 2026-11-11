@@ -23,6 +23,7 @@
   - [Local Development](#local-development)
     - [Run the Agent Locally](#run-the-agent-locally)
     - [Run the UI Locally](#run-the-ui-locally)
+    - [Continuous Integration](#continuous-integration)
   - [Benchmarks](#benchmarks)
     - [Dataset Search Benchmark](#dataset-search-benchmark)
     - [Agent Benchmark](#agent-benchmark)
@@ -255,6 +256,32 @@ Connecting to a local agent on localhost:
 ```
 
 The script retrieves configuration from CloudFormation, generates `.env.local`, and starts the dev server. Infrastructure must be deployed first.
+
+### Continuous Integration
+
+The [CI workflow](.github/workflows/ci.yml) runs on every pull request (including Dependabot security updates) and on pushes to `main`. It needs no AWS account or secrets: AWS is emulated with [moto](https://github.com/getmoto/moto) and in-test fakes, and the LLM is replaced by a scripted model, so the real agent and UI code paths run deterministically.
+
+| Job | What it checks |
+| --- | --- |
+| UI - type-check & build | `tsc` on the web app and `vite build` |
+| Agent - dependencies & service tests | pinned `agent/requirements.txt` resolves, and the agent service streams a full analysis (dataset search, sandboxed pandas over Athena, Plotly and matplotlib charts) over `/invocations` |
+| Agent - container image (ARM64) | the AgentCore image builds and imports its runtime dependencies |
+| E2E - UI (Playwright) & full stack | the built UI: Cognito sign-in and password change, SigV4-signed AgentCore invocation, rendering of every agent event, and a full-stack run against the real agent service |
+| Infrastructure - CDK synth & cdk-nag | all stacks synthesize and pass the `AwsSolutions` checks |
+
+Use the `CI status` check as the required status check in the branch protection rules. To run the checks locally:
+```bash
+# Agent service tests
+cd agent
+pip install -r requirements.txt -r requirements-test.txt
+python -m pytest
+
+# UI type-check, build and end-to-end tests (add E2E_AGENT_PYTHON for the full-stack test)
+cd user-interface
+npm ci && npm run typecheck && npm run build
+npx playwright install chromium
+E2E_AGENT_PYTHON=$(which python) npm run test:e2e
+```
 
 ## Benchmarks
 The `agent` directory contains two benchmarks, to compare the performance of different foundational models.

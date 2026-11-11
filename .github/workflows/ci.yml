@@ -1,0 +1,202 @@
+# Continuous Integration: verifies that a change (in particular Dependabot / security
+# dependency updates) does not break the agent service, the web UI, or the CDK app.
+#
+# Everything runs offline against fakes: no AWS account, credentials or secrets are needed,
+# so it also works for pull requests opened by Dependabot and from forks.
+#
+#   ui              type-check + production build of the React web app
+#   agent           pinned requirements resolve + agent service smoke tests (pytest, moto)
+#   agent-image     the AgentCore container image builds on ARM64, as in CodeBuild
+#   e2e             Playwright tests of the built UI: Cognito sign-in + AgentCore SDK path,
+#                   chat rendering, and a full-stack run against the real agent service
+#   infrastructure  `cdk synth` of all stacks, including the cdk-nag AwsSolutions checks
+#   ci-status       single aggregated status, convenient as the required branch-protection check
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.11" # matches the agent Dockerfile base image
+  AWS_CDK_CLI_VERSION: "2.1148.1"
+
+jobs:
+  ui:
+    name: UI - type-check & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: user-interface
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: user-interface/package-lock.json
+      - name: Install dependencies (from lockfile)
+        run: npm ci --no-audit --no-fund
+      - name: Type-check
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+
+  agent:
+    name: Agent - dependencies & service tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: agent/requirements*.txt
+      - name: Install pinned agent requirements
+        run: |
+          uv venv "$RUNNER_TEMP/agent-venv"
+          echo "VIRTUAL_ENV=$RUNNER_TEMP/agent-venv" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/agent-venv/bin" >> "$GITHUB_PATH"
+          VIRTUAL_ENV="$RUNNER_TEMP/agent-venv" uv pip install -r requirements.txt -r requirements-test.txt
+      - name: Check dependency compatibility
+        run: uv pip check
+      - name: Run agent service tests
+        run: python -m pytest -p no:cacheprovider
+
+  agent-image:
+    name: Agent - container image (ARM64)
+    # AgentCore runs ARM64 images, built by CodeBuild on an ARM host (see agentcore_stack.py).
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build --pull -t data-analyst-agent:ci agent
+      - name: Smoke-test image
+        run: |
+          docker run --rm --entrypoint python data-analyst-agent:ci -c "
+          import importlib.metadata as md
+          import bedrock_agentcore, strands, strands_code_agent, smolagents, boto3, s3fs
+          import numpy, pandas, scipy, matplotlib, seaborn, plotly, json_repair, jinja2
+          from bedrock_agentcore.runtime import BedrockAgentCoreApp
+          from strands_code_agent.code_agent import CodeAgent
+          print({p: md.version(p) for p in ['strands-agents', 'strands-code-agent', 'bedrock-agentcore', 'boto3']})
+          "
+          test "$(docker run --rm --entrypoint id data-analyst-agent:ci -un)" = "bedrock_agentcore"
+          docker run --rm --entrypoint sh data-analyst-agent:ci -c "command -v opentelemetry-instrument"
+
+  e2e:
+    name: E2E - UI (Playwright) & full stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: user-interface
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: user-interface/package-lock.json
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: agent/requirements*.txt
+      - name: Install agent requirements (for the full-stack tests)
+        working-directory: agent
+        run: |
+          uv venv "$RUNNER_TEMP/agent-venv"
+          VIRTUAL_ENV="$RUNNER_TEMP/agent-venv" uv pip install -r requirements.txt -r requirements-test.txt
+      - name: Install UI dependencies (from lockfile)
+        run: npm ci --no-audit --no-fund
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright tests
+        env:
+          E2E_AGENT_PYTHON: ${{ runner.temp }}/agent-venv/bin/python
+        run: npx playwright test
+      - name: Upload Playwright report
+        if: ${{ !cancelled() && failure() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report
+          path: |
+            user-interface/playwright-report/
+            user-interface/test-results/
+          retention-days: 14
+
+  infrastructure:
+    name: Infrastructure - CDK synth & cdk-nag
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: infrastructure
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: requirements.txt
+      - name: Install CDK app requirements
+        run: |
+          uv venv "$RUNNER_TEMP/cdk-venv"
+          echo "$RUNNER_TEMP/cdk-venv/bin" >> "$GITHUB_PATH"
+          VIRTUAL_ENV="$RUNNER_TEMP/cdk-venv" uv pip install -r ../requirements.txt
+      - name: Synthesize all stacks (fails on cdk-nag errors)
+        env:
+          # Synthesis needs no AWS access; a placeholder environment is enough.
+          CDK_DEFAULT_ACCOUNT: "123456789012"
+          CDK_DEFAULT_REGION: us-east-1
+        run: npx --yes "aws-cdk@${AWS_CDK_CLI_VERSION}" synth --quiet --no-notices --output "$RUNNER_TEMP/cdk.out"
+
+  ci-status:
+    name: CI status
+    if: ${{ always() }}
+    needs: [ui, agent, agent-image, e2e, infrastructure]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check job results
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then
+              echo "::error::At least one CI job did not succeed."
+              exit 1
+            fi
+          done

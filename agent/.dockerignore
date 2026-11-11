@@ -59,6 +59,8 @@ docs/
 
 # Project specific
 tests/
+pytest.ini
+requirements-test.txt
 
 # Bedrock AgentCore specific - keep config but exclude runtime files
 .bedrock_agentcore.yaml

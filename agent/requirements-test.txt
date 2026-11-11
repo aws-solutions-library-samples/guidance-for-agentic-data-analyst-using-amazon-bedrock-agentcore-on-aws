@@ -1,0 +1,6 @@
+# Test-only dependencies (not installed in the AgentCore container image).
+# Used by CI (.github/workflows/ci.yml) to smoke-test the agent service offline.
+pytest==9.2.0
+pytest-timeout==2.4.0
+moto[s3,ssm]==5.2.5
+httpx==0.28.1
