@@ -2,7 +2,8 @@
 aws-cdk-lib
 constructs
 cdk-s3-vectors
-cdk-nag
+# v3 removed NagSuppressions (replaced by Validations.of().acknowledge()); stay on v2 until migrated
+cdk-nag==2.38.2
 
 # Runtime
 strands-agents
