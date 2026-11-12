@@ -98,6 +98,9 @@ def visualize_interactive_chart(chart_path: str, chart_type: str = "plotly"):
     pass
 
 
+VISUALIZATION_TOOLS = ('visualize_image', 'visualize_interactive_chart')
+
+
 class DataAnalystAgent:
     def __init__(self,
                  model_id=DEFAULT_MODEL_ID,
@@ -110,6 +113,7 @@ class DataAnalystAgent:
         self.datasets_loader = CloudDatasetLoader()
         self.datasets_db = DatasetsDB()
         self.tool_uses = {}
+        self.pending_visualizations = {}
 
         messages = []
         if history is not None:
@@ -130,13 +134,30 @@ class DataAnalystAgent:
                 DATA_ANALYSIS_TOOLKIT, VISUALIZATION_TOOLKIT, PLOTLY_TOOLKIT,
                 QUERY_HANDLER_TOOLKIT,
             ],
-            model=BedrockModel(
-                model_id=model_id,
-                temperature=DEFAULT_TEMPERATURE,
-            ),
+            model=BedrockModel(**self.__model_config()),
             callback_handler=None,
             messages=messages,
         )
+
+    def __model_config(self):
+        config = {'model_id': self.model_id}
+        # Some models (e.g. Claude 5.5) reject `temperature`: only send it when supported.
+        if MODELS[self.model_id].get('supports_temperature', True) and self.temperature is not None:
+            config['temperature'] = self.temperature
+        return config
+
+    def __load_visualization(self, toolUse):
+        """Attach the image / chart spec to a visualization toolUse event, once its file exists."""
+        try:
+            if toolUse['name'] == 'visualize_image':
+                toolUse['image'] = image_to_base64(toolUse['input']['image_path'])
+            else:
+                with open(toolUse['input']['chart_path'], 'r') as f:
+                    toolUse['chart_spec'] = f.read()
+        except (OSError, KeyError) as e:
+            # Don't abort the whole analysis because one visualization is missing.
+            return {"msg_type": "text", "text": f"⚠️ Could not load visualization ({toolUse['name']}): {e}"}
+        return toolUse
 
     def prepare_prompt(self, query, datasets=None):
         if datasets is None:
@@ -191,6 +212,9 @@ class DataAnalystAgent:
                     'result': self.__post_process_result(event['result'])
                 }
             elif 'message' in event:
+                # Visualizations are streamed after the other tool results of the same batch
+                # (e.g. the output of the code that produced them).
+                visualizations = []
                 for content in event['message']['content']:
                     if 'text' in content:
                         yield {"msg_type": "text", "text": content['text']}
@@ -200,11 +224,11 @@ class DataAnalystAgent:
                         self.tool_uses[toolUse['toolUseId']] = toolUse['name']
                         toolUse["msg_type"] = "toolUse"
 
-                        if toolUse['name'] == 'visualize_image':
-                            toolUse['image'] = image_to_base64(toolUse['input']['image_path'])
-                        elif toolUse['name'] == 'visualize_interactive_chart':
-                            with open(toolUse['input']['chart_path'], 'r') as f:
-                                toolUse['chart_spec'] = f.read()
+                        if toolUse['name'] in VISUALIZATION_TOOLS:
+                            # The model may batch the code writing the file and the visualize call
+                            # in the same message: defer reading the file until the tools have run.
+                            self.pending_visualizations[toolUse['toolUseId']] = toolUse
+                            continue
 
                         yield toolUse
 
@@ -212,8 +236,16 @@ class DataAnalystAgent:
                         toolResult = content['toolResult']
                         toolResult['name'] = self.tool_uses[toolResult['toolUseId']]
 
-                        if toolResult['name'] in ('visualize_image', 'visualize_interactive_chart'):
+                        if toolResult['name'] in VISUALIZATION_TOOLS:
+                            toolUse = self.pending_visualizations.pop(toolResult['toolUseId'], None)
+                            if toolUse is not None:
+                                visualizations.append(toolUse)
                             continue
 
                         toolResult["msg_type"] = "toolResult"
                         yield toolResult
+
+                # The tool-result message is emitted after every tool of the batch has run,
+                # so the files written by the code are now available.
+                for toolUse in visualizations:
+                    yield self.__load_visualization(toolUse)

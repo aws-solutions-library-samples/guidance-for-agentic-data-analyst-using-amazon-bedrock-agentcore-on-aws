@@ -45,7 +45,22 @@ EOF
 echo "=== Building React UI ==="
 cd "$UI_DIR"
 npm install
+# Pass every VITE_* variable explicitly: process env takes precedence over all .env* files,
+# so a developer's .env.local (e.g. VITE_USE_LOCAL_AGENT=true from start-ui-local.sh --local)
+# cannot leak into the production build.
+VITE_COGNITO_USER_POOL_ID="$COGNITO_USER_POOL_ID" \
+VITE_COGNITO_CLIENT_ID="$COGNITO_CLIENT_ID" \
+VITE_COGNITO_IDENTITY_POOL_ID="$COGNITO_IDENTITY_POOL_ID" \
+VITE_AGENT_RUNTIME_ARN="$AGENT_RUNTIME_ARN" \
+VITE_AWS_REGION="$AWS_REGION" \
+VITE_USE_LOCAL_AGENT=false \
 npm run build
+
+# Guard: the production bundle must invoke the deployed AgentCore runtime.
+if ! grep -rqF "$AGENT_RUNTIME_ARN" build/assets; then
+    echo "ERROR: built UI does not reference $AGENT_RUNTIME_ARN; refusing to deploy." >&2
+    exit 1
+fi
 
 echo "=== Deploying UI to S3 ==="
 aws s3 sync build/ "s3://$BUCKET_NAME" --delete

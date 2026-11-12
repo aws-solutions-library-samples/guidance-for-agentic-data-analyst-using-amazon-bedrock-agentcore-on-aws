@@ -1,4 +1,7 @@
 # See: https://aws.amazon.com/bedrock/pricing/
+#
+# 'supports_temperature': Claude 5.5 models reject the `temperature` inference parameter
+# (ValidationException: "`temperature` is deprecated for this model"), so it must be omitted.
 
 CLAUDE_HAIKU_5_5_MODEL = {
     'id': "global.anthropic.claude-haiku-5-5",
@@ -7,7 +10,8 @@ CLAUDE_HAIKU_5_5_MODEL = {
             'input' : 0.0000001,
             'output': 0.0000005
         }
-    }
+    },
+    'supports_temperature': False,
 }
 
 CLAUDE_SONNET_5_5_MODEL = {
@@ -17,7 +21,8 @@ CLAUDE_SONNET_5_5_MODEL = {
             'input' : 0.000002,
             'output': 0.00001
         }
-    }
+    },
+    'supports_temperature': False,
 }
 
 CLAUDE_OPUS_5_5_MODEL = {
@@ -27,7 +32,8 @@ CLAUDE_OPUS_5_5_MODEL = {
             'input' : 0.000004,
             'output': 0.00002
         }
-    }
+    },
+    'supports_temperature': False,
 }
 
 

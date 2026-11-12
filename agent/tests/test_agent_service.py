@@ -125,6 +125,9 @@ def test_invocation_streams_full_analysis(client, monkeypatch, tmp_path, athena_
 
     # The conversation history and default model are passed to the LLM.
     assert model_kwargs["model_id"] == data_analyst_agent.DEFAULT_MODEL_ID
+    # Models that reject `temperature` (e.g. Claude 5.5) must not receive it.
+    if not data_analyst_agent.MODELS[data_analyst_agent.DEFAULT_MODEL_ID].get("supports_temperature", True):
+        assert "temperature" not in model_kwargs, model_kwargs
     first_messages = model.requests[0]["messages"]
     assert first_messages[0] == {"role": "user", "content": [{"text": "Hello"}]}
     assert first_messages[1] == {"role": "assistant", "content": [{"text": "Hi, how can I help?"}]}
@@ -161,3 +164,58 @@ def test_invocation_reports_model_failure(client, monkeypatch):
 
     assert events[0]["msg_type"] == "datasets"
     assert any("error" in e for e in events), events
+
+
+@pytest.mark.parametrize("supports_temperature", [True, False])
+def test_temperature_only_sent_to_models_that_support_it(monkeypatch, supports_temperature):
+    """Claude 5.5 models fail with "`temperature` is deprecated for this model" if it is sent."""
+    from aws_data_analyst import data_analyst_agent
+
+    model_id = data_analyst_agent.DEFAULT_MODEL_ID
+    patched = dict(data_analyst_agent.MODELS[model_id], supports_temperature=supports_temperature)
+    monkeypatch.setitem(data_analyst_agent.MODELS, model_id, patched)
+    model_kwargs = {}
+    monkeypatch.setattr(data_analyst_agent, "BedrockModel", lambda **kw: model_kwargs.update(kw) or ScriptedModel([]))
+
+    data_analyst_agent.DataAnalystAgent(model_id=model_id, temperature=0.3)
+
+    assert model_kwargs["model_id"] == model_id
+    if supports_temperature:
+        assert model_kwargs["temperature"] == 0.3
+    else:
+        assert "temperature" not in model_kwargs
+
+
+def test_visualization_batched_with_the_code_that_writes_it(client, monkeypatch, tmp_path):
+    """Newer models emit the code writing a chart and the visualize call in one turn.
+
+    The chart file only exists after python_repl ran, so the stream must not read it
+    when the toolUse is announced (that raised FileNotFoundError and aborted the stream).
+    """
+    from aws_data_analyst import data_analyst_agent
+    from offline_aws import text, tool_use
+
+    chart_path = tmp_path / "c.json"
+    code = f"fig = px.bar(x=['a'], y=[1])\nfig.write_json({str(chart_path)!r})\nprint('WROTE')"
+    missing_path = str(tmp_path / "missing.json")
+    turns = [
+        [tool_use("python_repl", {"code": code}, "tooluse_code"),
+         tool_use("visualize_interactive_chart", {"chart_path": str(chart_path), "chart_type": "plotly"}, "tooluse_chart")],
+        [tool_use("visualize_interactive_chart", {"chart_path": missing_path}, "tooluse_missing")],
+        [text(json.dumps({"answer": "done", "supported_by_data": True}))],
+    ]
+    monkeypatch.setattr(data_analyst_agent, "BedrockModel", lambda **_: ScriptedModel(turns))
+
+    with client.stream("POST", "/invocations", json={"message": "plot it"}) as response:
+        events = read_sse_events(response)
+
+    assert not [e for e in events if "error" in e], events
+    charts = [e for e in events if e.get("msg_type") == "toolUse" and e.get("name") == "visualize_interactive_chart"]
+    assert len(charts) == 1 and json.loads(charts[0]["chart_spec"])["data"][0]["type"] == "bar"
+    # The chart is streamed after the output of the code that produced it.
+    repl_index = next(i for i, e in enumerate(events) if e.get("msg_type") == "toolResult" and e.get("name") == "python_repl")
+    assert "WROTE" in events[repl_index]["content"][0]["text"], events[repl_index]
+    assert repl_index < events.index(charts[0])
+    # A missing file is reported without aborting the analysis.
+    assert any(e.get("msg_type") == "text" and "Could not load visualization" in e["text"] for e in events), events
+    assert events[-1]["msg_type"] == "result"
