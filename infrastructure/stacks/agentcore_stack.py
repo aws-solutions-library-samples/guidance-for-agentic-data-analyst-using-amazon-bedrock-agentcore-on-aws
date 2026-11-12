@@ -209,6 +209,11 @@ class AgentCoreStack(Stack):
         )
 
         NagSuppressions.add_resource_suppressions(
+            build_trigger_function,
+            [{"id": "AwsSolutions-L1", "reason": "Python 3.14 is the latest GA Lambda runtime; newer runtimes are in public preview and not suitable for production"}],
+        )
+
+        NagSuppressions.add_resource_suppressions(
             build_trigger_role,
             [{"id": "AwsSolutions-IAM5", "reason": "Lambda requires CloudWatch logs wildcard for log group creation"}],
             apply_to_children=True

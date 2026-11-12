@@ -400,6 +400,11 @@ class DataStack(Stack):
             },
             description="Automatically index datasets when new metadata files are uploaded"
         )
+
+        NagSuppressions.add_resource_suppressions(
+            vector_db_indexer,
+            [{"id": "AwsSolutions-L1", "reason": "Python 3.14 is the latest GA Lambda runtime; newer runtimes are in public preview and not suitable for production"}],
+        )
         
         # S3 event notification to trigger Lambda for .parquet files in datasets/ prefix
         self.athena_data_bucket.add_event_notification(
